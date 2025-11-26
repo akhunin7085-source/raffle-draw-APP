@@ -1,131 +1,135 @@
 import streamlit as st
 import pandas as pd
-import io 
-import base64 
-import qrcode 
+import qrcode
+import base64
+import io
+import urllib.parse
 from datetime import datetime
-import os
-import urllib.parse 
 
-# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด ---
-def create_print_ready_excel(history_data): 
-    if not history_data:
-        return None
+# ----------------------------------------------------
+# ฟังก์ชันสร้าง QR Code
+# ----------------------------------------------------
+def generate_qr_code(url):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    
+    # บันทึกเป็น PNG ในหน่วยความจำ
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    
+    return f"data:image/png;base64,{img_str}"
 
-    history_df = pd.DataFrame(history_data) 
-    history_df['ช่องเซ็นต์รับ'] = '' 
-    
-    final_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'ช่องเซ็นต์รับ']
-    final_df = history_df[final_cols]
-    final_df.insert(0, 'ลำดับ', range(1, 1 + len(final_df)))
-    
+# ----------------------------------------------------
+# ฟังก์ชันดาวน์โหลด Excel
+# ----------------------------------------------------
+def to_excel(df):
     output = io.BytesIO()
-    try:
-        import xlsxwriter 
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer: 
-            final_df.to_excel(writer, index=False, sheet_name='ผลจับรางวัลปีใหม่')
-            worksheet = writer.sheets['ผลจับรางวัลปีใหม่']
-            worksheet.set_column('A:A', 8) 
-            worksheet.set_column('B:B', 20) 
-            worksheet.set_column('C:C', 20) 
-            worksheet.set_column('D:D', 30) 
-            worksheet.set_column('E:E', 25) 
-    except Exception as e:
-         st.error(f"เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: {e}")
-         return None
-    
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Summary')
+    writer.close()
     processed_data = output.getvalue()
     return processed_data
 
-# --- ฟังก์ชันสร้าง QR Code ---
-def create_qrcode_base64(text_data):
-    try:
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(text_data)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white").convert('RGB') 
-        
-        buffer = io.BytesIO()
-        img.save(buffer, format="PNG")
-        buffer.seek(0)
-        
-        base64_img = base64.b64encode(buffer.getvalue()).decode()
-        return f"data:image/png;base64,{base64_img}"
-        
-    except Exception as e:
-        return None
-
-# --- Main Summary Program ---
-def summary_main():
+# ----------------------------------------------------
+# --- Main Program (Summary Page) ---
+# ----------------------------------------------------
+def main():
     
-    st.set_page_config(
-        layout="wide",
-        page_title="สรุปผลรางวัลรวม", 
-        page_icon="🏆"  # <-- เพิ่มไอคอนเพื่อกระตุ้นการตรวจจับ
-    )
-
+    st.set_page_config(layout="wide", page_title="สรุปผลรางวัล")
+    
+    # ดึงประวัติการสุ่ม
+    draw_history = st.session_state.get('draw_history', [])
+    
+    # ----------------------------------------------------
+    # ส่วนตั้งค่า Sidebar สำหรับ URL (New)
+    # ----------------------------------------------------
+    with st.sidebar:
+        st.header("⚙️ การตั้งค่าหน้าสรุปผล")
+        
+        # *** NEW: ให้ผู้ใช้ใส่ Base URL ของแอปพลิเคชัน ***
+        # ตัวอย่าง URL: https://lws-draw-app-final.streamlit.app
+        default_url = "https://[YOUR_APP_NAME].streamlit.app"
+        app_base_url = st.text_input(
+            "Base URL ของ Streamlit App:",
+            value=default_url,
+            help="ใช้สำหรับสร้างลิงก์ QR Code ที่ถูกต้อง (ต้องเป็นลิงก์สาธารณะของแอปคุณ)"
+        )
+        st.markdown("---")
+    
+    
     st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
     st.markdown("---")
-
-    # ดึงข้อมูลประวัติการสุ่มจาก Session State
-    if 'draw_history' not in st.session_state or not st.session_state.draw_history:
-        st.warning("⚠️ ยังไม่มีประวัติการสุ่มรางวัล กรุณาไปที่หน้าหลักเพื่อเริ่มสุ่ม")
-        return
-
-    final_history = st.session_state.draw_history
     
     # ----------------------------------------------------
-    # 1. ส่วนแสดง QR Code สำหรับการตรวจสอบ
+    # ส่วน QR Code
     # ----------------------------------------------------
-    st.subheader("📢 QR Code สำหรับการตรวจสอบผลรางวัลรวม")
+    st.header("🎟️ QR Code สำหรับการตรวจสอบผลรางวัล")
     
-    qr_base64_summary = create_qrcode_base64("สแกนเพื่อตรวจสอบผลรางวัลรวม") 
-    
-    if qr_base64_summary:
-        col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
+    # ตรวจสอบและสร้าง URL สำหรับ QR Code
+    if app_base_url and "[YOUR_APP_NAME]" not in app_base_url:
+        # URL ของหน้าสรุปผลคือ Base URL + /Summary (หรือ /1_Summary)
+        # เราจะใช้ /Summary ตามที่แสดงใน URL ของรูปที่คุณส่งมา
+        summary_page_path = "/Summary" 
         
+        # ทำให้แน่ใจว่า Base URL ไม่มี / ท้าย และ Path มี / นำหน้า
+        base_url_clean = app_base_url.rstrip('/')
+        full_summary_url = f"{base_url_clean}{summary_page_path}"
+
+        qr_image_data = generate_qr_code(full_summary_url)
+        
+        col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
         with col_qr_center:
-            st.markdown(f"""
-            <div style='text-align: center; background-color: white; padding: 10px; border-radius: 5px; border: 2px solid #ff4b4b;'>
-                <img src="{qr_base64_summary}" alt="Summary QR Code" style="width: 200px; height: 200px; display: block; margin: auto;">
-                <p style='color: black; margin-top: 10px; font-weight: bold;'>สแกนเพื่อดูผลรางวัลทั้งหมด</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.image(qr_image_data, caption="สแกนเพื่อดูผลรางวัล", use_column_width="auto")
+        
+        st.info(f"ลิงก์ QR Code: {full_summary_url}")
+    else:
+        st.warning("⚠️ กรุณากรอก Public URL ของแอปพลิเคชันของคุณใน Sidebar เพื่อสร้าง QR Code ที่ใช้งานได้จริง")
+        
+    st.markdown("---")
+
+    # ----------------------------------------------------
+    # ส่วนแสดงผลลัพธ์
+    # ----------------------------------------------------
+    st.header("📋 รายชื่อผู้โชคดี")
+    
+    if draw_history:
+        # สร้าง DataFrame จากประวัติการสุ่ม
+        df_summary = pd.DataFrame(draw_history)
+        
+        # จัดเรียงตามรายการของขวัญ หรือตามลำดับที่ได้รับ
+        st.dataframe(df_summary, use_container_width=True)
         
         st.markdown("---")
+
+        # ----------------------------------------------------
+        # ส่วนดาวน์โหลด
+        # ----------------------------------------------------
+        st.header("⬇️ ไฟล์รางวัลสำหรับการพิมพ์")
         
-    # ----------------------------------------------------
-    # 2. ส่วนดาวน์โหลด Excel 
-    # ----------------------------------------------------
-    st.subheader("⬇️ ไฟล์ผลรางวัลสำหรับการพิมพ์")
-    
-    excel_data = create_print_ready_excel(final_history) 
-    
-    if excel_data:
-        col_d_left, col_d_center, col_d_right = st.columns([1, 1, 1])
-        with col_d_center:
-            st.download_button(
-                label="✅ ดาวน์โหลดไฟล์ Excel (พร้อมช่องเซ็นต์รับ)",
-                data=excel_data,
-                file_name=f'Raffle_Results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                use_container_width=True
-            )
-            
-    st.markdown("---")
-    
-    # ----------------------------------------------------
-    # 3. ส่วนแสดงตารางประวัติรวม
-    # ----------------------------------------------------
-    st.subheader("📊 ตารางประวัติการสุ่มทั้งหมด")
-    
-    history_display_df = pd.DataFrame(final_history)
-    st.dataframe(history_display_df[['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ']], use_container_width=True)
+        excel_data = to_excel(df_summary)
+        
+        st.download_button(
+            label="💾 ดาวน์โหลดไฟล์ Excel (พร้อมชื่อผู้โชคดี)",
+            data=excel_data,
+            file_name=f'Summary_Raffle_Draw_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            type="primary"
+        )
+        
+    else:
+        st.info("ยังไม่มีข้อมูลการสุ่มรางวัล")
 
 if __name__ == '__main__':
-    summary_main()
+    # ตรวจสอบการเริ่มต้นของ session_state
+    if 'draw_history' not in st.session_state:
+         st.session_state.draw_history = []
+    main()
