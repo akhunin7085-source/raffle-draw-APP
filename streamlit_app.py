@@ -19,8 +19,8 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     employee_data = pd.DataFrame()
     prize_data = pd.DataFrame()
     
-    # แก้ไข SyntaxError (ลบ Emoji ในส่วนที่มักมีปัญหาในการ encoding)
     if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
+        # แก้ไข SyntaxError (ลบ Emoji ในส่วนที่มักมีปัญหาในการ encoding)
         st.error("ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
         return pd.DataFrame(), pd.DataFrame()
         
@@ -50,6 +50,7 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
         st.error(f"เกิดข้อผิดพลาดในการโหลด/ประมวลผลข้อมูล: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
+    st.success("โหลดข้อมูลสำเร็จแล้ว! พร้อมสุ่มรางวัล")
     return employee_data, prize_data 
 
 def run_draw(group, emp_df, prize_df):
@@ -67,6 +68,7 @@ def run_draw(group, emp_df, prize_df):
         st.error(f"กลุ่ม {group}: ไม่มีพนักงานที่ยังไม่ได้สุ่ม หรือไม่มีของขวัญเหลือแล้ว")
         return []
         
+    # ปรับให้สุ่มได้ไม่เกินจำนวนที่กำหนด
     selected_employee_data = available_employees[['ชื่อ-นามสกุล', 'แผนก']].sample(max_draws)
     selected_employees = selected_employee_data.values.tolist() 
     selected_prizes = random.sample(prize_list, max_draws)
@@ -74,6 +76,7 @@ def run_draw(group, emp_df, prize_df):
     results = list(zip(selected_employees, selected_prizes))
     return results
 
+# ฟังก์ชันดึงภาพพื้นหลัง
 def get_base64_image(image_file):
     try:
         with open(image_file, "rb") as f:
@@ -104,7 +107,8 @@ def main():
     
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
-        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 🎁 (Raffle Draw)"
+        # 🚨 เปลี่ยนชื่อเล็กน้อยเพื่อบังคับ Redeploy และตรวจสอบ Multi-page App
+        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.Final 🎁 (Raffle Draw)"
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         st.markdown("**ไฟล์ข้อมูล:**")
@@ -129,7 +133,6 @@ def main():
     else:
         background_css = ".stApp { background-color: #0e1117; }" 
         
-    # แก้ไข NameError: name 'padding' is not defined
     st.markdown(f"""
         <style>
         {background_css}
@@ -204,7 +207,7 @@ def main():
         """, unsafe_allow_html=True)
     
     # ----------------------------------------------------
-    # 2. โหลดและเก็บข้อมูลใน Session State (แก้ NameError: prize_df)
+    # 2. โหลดและเก็บข้อมูลใน Session State (แก้ NameError และ TypeError)
     # ----------------------------------------------------
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
@@ -216,7 +219,6 @@ def main():
     if st.session_state.emp_df.empty:
          return 
 
-    # แก้ไข TypeError: not supported between 'str' and 'float'
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
     groups = sorted(list(set(groups))) 
@@ -260,7 +262,6 @@ def main():
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
                 if draw_results:
-                    # แก้ไข SyntaxError
                     st.subheader(f"เริ่มการสุ่มกลุ่ม **{selected_group}**") 
                     current_winner_box = st.empty() 
                     
@@ -277,7 +278,6 @@ def main():
                         
                         # A. Show rolling animation 
                         with current_winner_box.container():
-                            # แก้ไข SyntaxError
                             st.markdown(f"## กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**...") 
                         time.sleep(0.5)
                         
