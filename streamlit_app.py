@@ -331,13 +331,21 @@ def main():
     if st.session_state.draw_history:
         st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
         
+        # 🚨 แก้ไขส่วนนี้: ใช้ Path โดยตรง (1_Summary)
         SUMMARY_APP_PATH = "1_Summary" 
+        
+        # 🚨 URL เต็มสำหรับการลิงก์ (สำคัญมากในการแก้ไข)
+        # URL ของแอปพลิเคชันหลักคือ: https://draw-app-lertwasin.streamlit.app/
+        # Path ที่ถูกต้องของหน้า Summary คือ: /1_Summary
+        FULL_SUMMARY_URL = "/1_Summary" 
         
         col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
         with col_btn_center:
+            # ใช้โค้ด HTML เพื่อเปิดลิงก์ไปยังหน้า Summary ในแท็บใหม่
+            # 🚨 แทนที่ SUMMARY_APP_PATH ด้วย FULL_SUMMARY_URL ในแท็ก <a>
             st.markdown(f"""
-            <a href="{SUMMARY_APP_PATH}" target="_blank">
+            <a href="{FULL_SUMMARY_URL}" target="_blank">
                 <button style='
                     background-color: #4beaff;
                     color: #0e1117;
@@ -358,3 +366,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
