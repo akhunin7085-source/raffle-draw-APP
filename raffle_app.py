@@ -10,34 +10,29 @@ import qrcode
 import json 
 import urllib.parse # สำหรับเข้ารหัส URL Parameter
 
+# *** ฟังก์ชันผู้ช่วย ***
+
 # --- ฟังก์ชันโหลดข้อมูล (เหมือนเดิม) ---
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
-    
+    # ... (โค้ดโหลดข้อมูลเหมือนเดิม)
     employee_data = pd.DataFrame()
     prize_data = pd.DataFrame()
     
-    if not os.path.exists(emp_file) or not os.path.exists(prize_file):
-        st.error(f"⚠️ ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ '{emp_file}' และ '{prize_file}' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
+    if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
+        st.error("⚠️ ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
         return pd.DataFrame(), pd.DataFrame()
         
-    st.info(f"กำลังโหลดข้อมูลจากไฟล์: {emp_file} และ {prize_file}...")
+    st.info("กำลังโหลดข้อมูล...")
     
     try:
-        # ... (โค้ดโหลดข้อมูลเหมือนเดิม)
-        if emp_file.endswith(('.csv', '.CSV')):
-             employee_data = pd.read_csv(emp_file)
-        else:
-             employee_data = pd.read_excel(emp_file)
+        employee_data = pd.read_csv('employees.csv')
+        prize_data = pd.read_csv('prizes.csv')
         
-        if prize_file.endswith(('.csv', '.CSV')):
-             prize_data = pd.read_csv(prize_file)
-        else:
-             prize_data = pd.read_excel(prize_file)
-        
-        required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล', 'สถานะ']
+        required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
         required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ']
         
+        # ตรวจสอบคอลัมน์ที่จำเป็น...
         if not all(col in employee_data.columns for col in required_emp_cols):
             st.error(f"❌ ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
             return pd.DataFrame(), pd.DataFrame()
@@ -46,29 +41,16 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
             st.error(f"❌ ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
             return pd.DataFrame(), pd.DataFrame()
 
-        prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].fillna(0) 
-        prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].astype(int)
+        # การจัดการข้อมูล
+        prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].fillna(0).astype(int)
         
-        if 'กลุ่มจับรางวัล' in employee_data.columns:
-            employee_data['กลุ่มจับรางวัล'] = employee_data['กลุ่มจับรางวัล'].astype(str).str.strip() 
-        if 'กลุ่มจับรางวัล' in prize_data.columns:
-            prize_data['กลุ่มจับรางวัล'] = prize_data['กลุ่มจับรางวัล'].astype(str).str.strip()
-            
         if 'สถานะ' not in employee_data.columns:
              employee_data['สถานะ'] = 'พร้อมสุ่ม'
         
-        if employee_data.empty or prize_data.empty:
-             st.error("❌ โหลดไฟล์ข้อมูลไม่สำเร็จ หรือไฟล์ว่างเปล่า")
-             return pd.DataFrame(), pd.DataFrame()
-
-    except ValueError as e:
-        st.error(f"❌ ข้อผิดพลาดในการแปลงข้อมูล: ตรวจสอบคอลัมน์ 'จำนวนคงเหลือ' ในไฟล์ของขวัญ ว่ามีข้อความที่ไม่ใช่ตัวเลขหรือไม่: ({e})")
-        return pd.DataFrame(), pd.DataFrame()
     except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาดในการโหลดข้อมูล: {e}")
+        st.error(f"❌ เกิดข้อผิดพลาดในการโหลด/ประมวลผลข้อมูล: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
-    st.success("✅ โหลดข้อมูลสำเร็จแล้ว! พร้อมเริ่มจับรางวัล")
     return employee_data, prize_data 
 
 # --- ฟังก์ชันหลักในการสุ่ม (เหมือนเดิม) ---
@@ -96,8 +78,10 @@ def run_draw(group, emp_df, prize_df):
     results = list(zip(selected_employees, selected_prizes))
     return results
 
-# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด (คัดลอกมาทั้งหมด) ---
+
+# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด (เหมือนเดิม) ---
 def create_print_ready_excel(history_data):
+    # ... (โค้ดสร้าง Excel เหมือนเดิม)
     if not history_data:
         return None
 
@@ -119,19 +103,15 @@ def create_print_ready_excel(history_data):
             worksheet.set_column('C:C', 20) 
             worksheet.set_column('D:D', 30) 
             worksheet.set_column('E:E', 25) 
-    except ImportError:
-         st.error("❌ ไม่พบ Library 'xlsxwriter' โปรดตรวจสอบไฟล์ requirements.txt และติดตั้งด้วยคำสั่ง: pip install xlsxwriter")
-         return None
     except Exception as e:
          st.error(f"❌ เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: {e}")
          return None
     
-    processed_data = output.getvalue()
-    return processed_data
+    return output.getvalue()
 
 # --- ฟังก์ชันสร้าง QR Code จากข้อความ/URL และแปลงเป็น Base64 (เหมือนเดิม) ---
 def create_qrcode_base64(text_data):
-    # ... (โค้ด create_qrcode_base64 เหมือนเดิม)
+    # ... (โค้ดสร้าง QR Code เหมือนเดิม)
     try:
         qr = qrcode.QRCode(
             version=1,
@@ -150,16 +130,12 @@ def create_qrcode_base64(text_data):
         base64_img = base64.b64encode(buffer.getvalue()).decode()
         return f"data:image/png;base64,{base64_img}"
         
-    except ImportError:
-        st.error("❌ ไม่พบ Library qrcode หรือ Pillow โปรดตรวจสอบ requirements.txt")
-        return None 
     except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาดในการสร้าง QR Code: {e}")
         return None
 
 # --- ฟังก์ชันแปลงไฟล์ภาพพื้นหลังให้เป็น Base64 สำหรับ CSS Background (เหมือนเดิม) ---
 def get_base64_image(image_file):
-    # ... (โค้ด get_base64_image เหมือนเดิม)
+    # ... (โค้ดดึงภาพพื้นหลังเหมือนเดิม)
     try:
         with open(image_file, "rb") as f:
             data = base64.b64encode(f.read()).decode("utf-8")
@@ -227,6 +203,7 @@ def main():
     st.markdown(f"""
         <style>
         {background_css}
+        /* ... (โค้ด CSS อื่นๆ เหมือนเดิม) ... */
 
         .block-container {{ 
             padding-top: 2rem;
@@ -301,43 +278,43 @@ def main():
         """, unsafe_allow_html=True)
     
     # ----------------------------------------------------
-    # 2. แสดงผล Title/Header 
+    # 2. แสดงผล Title/Header และจัดการ Session State
     # ----------------------------------------------------
     st.title(custom_title)
     st.markdown("---")
 
-    # โหลดและเก็บข้อมูลใน Session State (ใช้ Session State เป็นที่เก็บประวัติหลัก)
+    # โหลดและเก็บข้อมูลใน Session State
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
         st.session_state.emp_df = emp_df
         st.session_state.prize_df = prize_df
-        st.session_state.draw_history = [] # กลับมาใช้ Session State เป็นที่เก็บประวัติ
+        st.session_state.draw_history = [] 
         st.session_state.current_group_results = [] 
         st.session_state.current_group_name = ""
         st.session_state.selected_group = None 
-        # State สำหรับการแสดงผลสรุปเมื่อเปิดแท็บใหม่
         st.session_state.show_summary = False
 
     if st.session_state.emp_df.empty:
          return 
 
-    # *** โค้ดใหม่: ตรวจสอบ URL Parameter เมื่อโหลดหน้า ***
+    # *** โค้ดใหม่: ตรวจสอบ URL Parameter เมื่อโหลดหน้า (เพื่อแสดงผลสรุป) ***
     query_params = st.query_params
     
-    if 'results' in query_params and not st.session_state.draw_history:
+    # หากมี Parameter 'results' (มาจากแท็บใหม่ที่ต้องการดูสรุป) และเรายังไม่มีประวัติใน Session (แปลว่าเปิดแท็บใหม่จริง)
+    if 'results' in query_params:
         try:
             # ถอดรหัส JSON จาก URL Parameter
             encoded_results = query_params['results'][0] if isinstance(query_params['results'], list) else query_params['results']
             decoded_json = urllib.parse.unquote(encoded_results)
             history_from_url = json.loads(decoded_json)
             
-            # ยัดข้อมูลที่ได้รับกลับเข้า Session State (เพื่อให้ฟังก์ชันอื่นใช้ได้)
+            # ยัดข้อมูลที่ได้รับกลับเข้า Session State และเปิดโหมดสรุป
             st.session_state.draw_history = history_from_url
             st.session_state.show_summary = True
             
         except Exception:
-            # หากถอดรหัสไม่ได้ ให้ทำตามปกติ
-            pass
+            # หากถอดรหัสไม่ได้ ให้ทำตามปกติ (สุ่มต่อ)
+            st.session_state.show_summary = False
     
     # ดึงรายการกลุ่ม
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
@@ -346,124 +323,117 @@ def main():
     groups = sorted(list(set(groups))) 
     
     # ----------------------------------------------------
-    # 3. ส่วนเลือกกลุ่ม
+    # 3. ส่วนเลือกกลุ่มและปุ่มสุ่ม (แสดงเฉพาะเมื่อไม่ได้อยู่ในโหมดสรุป)
     # ----------------------------------------------------
-    st.markdown("## เลือกกลุ่มจับรางวัล:")
-    
-    n_groups = len(groups)
-    cols_weights = [1] * (n_groups + 2) 
-    
-    if n_groups > 0:
-        cols_center = st.columns(cols_weights) 
+    if not st.session_state.show_summary:
+        st.markdown("## เลือกกลุ่มจับรางวัล:")
         
-        for i, group in enumerate(groups):
-            with cols_center[i + 1]: 
-                if st.button(group, key=f"group_btn_{group}", help=f"คลิกเพื่อเลือกกลุ่ม {group} เพื่อเตรียมสุ่ม", use_container_width=True):
-                    st.session_state.selected_group = group
-                    st.session_state.show_summary = False # ซ่อนสรุปผลเมื่อเริ่มสุ่มใหม่
-                    st.rerun() 
-    else:
-        st.warning("⚠️ ไม่พบกลุ่มจับรางวัลที่ถูกต้องในไฟล์ข้อมูล โปรดตรวจสอบคอลัมน์ 'กลุ่มจับรางวัล' ในไฟล์พนักงานว่ามีข้อมูลหรือไม่")
-
-    st.markdown("---")
-    
-    # ----------------------------------------------------
-    # 4. ปุ่มสุ่มหลักและแสดงผล
-    # ----------------------------------------------------
-    if st.session_state.selected_group and not st.session_state.show_summary: # ไม่แสดงเมื่ออยู่โหมดสรุป
-        selected_group = st.session_state.selected_group
+        n_groups = len(groups)
+        cols_weights = [1] * (n_groups + 2) 
         
-        col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
+        if n_groups > 0:
+            cols_center = st.columns(cols_weights) 
+            
+            for i, group in enumerate(groups):
+                with cols_center[i + 1]: 
+                    if st.button(group, key=f"group_btn_{group}", help=f"คลิกเพื่อเลือกกลุ่ม {group} เพื่อเตรียมสุ่ม", use_container_width=True):
+                        st.session_state.selected_group = group
+                        st.session_state.show_summary = False 
+                        st.rerun() 
+        else:
+            st.warning("⚠️ ไม่พบกลุ่มจับรางวัลที่ถูกต้องในไฟล์ข้อมูล")
+
+        st.markdown("---")
         
-        with col_btn_center:
-            st.markdown(f"**💡 กลุ่มที่พร้อมสุ่ม:** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
+        # 4. ปุ่มสุ่มหลักและแสดงผล
+        if st.session_state.selected_group:
+            selected_group = st.session_state.selected_group
+            
+            col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
+            
+            with col_btn_center:
+                st.markdown(f"**💡 กลุ่มที่พร้อมสุ่ม:** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
 
-            if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม: **{selected_group}**", key="main_draw_btn", use_container_width=True):
-                
-                draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
-                
-                if draw_results:
-                    st.session_state.current_group_results = [] 
-                    st.session_state.current_group_name = selected_group
+                if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม: **{selected_group}**", key="main_draw_btn", use_container_width=True):
+                    
+                    draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
+                    
+                    if draw_results:
+                        st.session_state.current_group_results = [] 
+                        st.session_state.current_group_name = selected_group
 
-                    st.subheader(f"✨ เริ่มการสุ่มกลุ่ม **{selected_group}** ✨")
-                    
-                    current_winner_box = st.empty() 
-                    
-                    col_left_balloons, col_center_content, col_right_balloons = st.columns([1, 4, 1])
-                    
-                    with col_left_balloons:
-                        st.balloons() 
-                    with col_right_balloons:
-                        st.balloons() 
+                        st.subheader(f"✨ เริ่มการสุ่มกลุ่ม **{selected_group}** ✨")
                         
-
-                    for i, item in enumerate(draw_results):
+                        current_winner_box = st.empty() 
                         
-                        try:
-                            (winner_name, winner_dept), prize = item
-                        except (ValueError, TypeError):
-                            st.error(f"❌ โครงสร้างข้อมูลผลลัพธ์ผิดพลาดในรายการที่ {i+1} : {item}")
-                            continue
+                        col_left_balloons, col_center_content, col_right_balloons = st.columns([1, 4, 1])
                         
-                        # A. Show rolling animation 
-                        with current_winner_box.container():
-                            st.markdown(f"## 🥁 กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**... 🥁") 
-                        time.sleep(0.5)
-                        
-                        # B. Announce Winner (ชั่วคราว)
-                        with current_winner_box.container():
-                            winner_message = f"""
-                            <div class='success-box'>
-                                <span style='font-size: 0.8em; font-weight: normal;'>🎊 ผู้โชคดีคนล่าสุดคือ:</span><br>
-                                <span style='font-size: 1.0em; color: #ffeb3b;'>**{winner_name}**</span><br>
-                                <span style='font-size: 0.8em; color: #ffffff;'> (ได้รับ: {prize}) </span>
-                            </div>
-                            """
-                            st.markdown(winner_message, unsafe_allow_html=True)
-                            st.markdown("---")
+                        with col_left_balloons:
+                            st.balloons() 
+                        with col_right_balloons:
+                            st.balloons() 
                             
-                        # C. อัปเดตสถานะและเก็บประวัติ
-                        idx_emp = st.session_state.emp_df.index[st.session_state.emp_df['ชื่อ-นามสกุล'] == winner_name].tolist()
-                        if idx_emp:
-                            st.session_state.emp_df.loc[idx_emp[0], 'สถานะ'] = 'ได้รับแล้ว'
+
+                        for i, item in enumerate(draw_results):
+                            
+                            try:
+                                (winner_name, winner_dept), prize = item
+                            except (ValueError, TypeError):
+                                st.error(f"❌ โครงสร้างข้อมูลผลลัพธ์ผิดพลาดในรายการที่ {i+1} : {item}")
+                                continue
+                            
+                            # A. Show rolling animation 
+                            with current_winner_box.container():
+                                st.markdown(f"## 🥁 กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**... 🥁") 
+                            time.sleep(0.5)
+                            
+                            # B. Announce Winner (ชั่วคราว)
+                            with current_winner_box.container():
+                                winner_message = f"""
+                                <div class='success-box'>
+                                    <span style='font-size: 0.8em; font-weight: normal;'>🎊 ผู้โชคดีคนล่าสุดคือ:</span><br>
+                                    <span style='font-size: 1.0em; color: #ffeb3b;'>**{winner_name}**</span><br>
+                                    <span style='font-size: 0.8em; color: #ffffff;'> (ได้รับ: {prize}) </span>
+                                </div>
+                                """
+                                st.markdown(winner_message, unsafe_allow_html=True)
+                                st.markdown("---")
+                                
+                            # C. อัปเดตสถานะและเก็บประวัติ
+                            idx_emp = st.session_state.emp_df.index[st.session_state.emp_df['ชื่อ-นามสกุล'] == winner_name].tolist()
+                            if idx_emp:
+                                st.session_state.emp_df.loc[idx_emp[0], 'สถานะ'] = 'ได้รับแล้ว'
+                            
+                            idx_prize = st.session_state.prize_df.index[st.session_state.prize_df['ชื่อของขวัญ'] == prize].tolist()
+                            if idx_prize:
+                                current_qty = st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ']
+                                st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
+                            
+                            st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
+                                                                  'แผนก': winner_dept, 
+                                                                  'รายการของขวัญ': prize})
+                            
+                            time.sleep(3.0) 
+                            
+                        # D. Grand Finale 
+                        st.empty() 
                         
-                        idx_prize = st.session_state.prize_df.index[st.session_state.prize_df['ชื่อของขวัญ'] == prize].tolist()
-                        if idx_prize:
-                            current_qty = st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ']
-                            st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
-                        
-                        result_item = (winner_name, winner_dept, prize)
-                        
-                        st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
-                                                              'แผนก': winner_dept, 
-                                                              'รายการของขวัญ': prize})
-                        
-                        st.session_state.current_group_results.append(result_item) 
-                        
-                        time.sleep(3.0) 
-                        
-                    # D. Grand Finale 
-                    st.empty() 
-                    
-                    with col_left_balloons:
-                        st.balloons()
-                    with col_right_balloons:
-                        st.balloons()
-                        
-                    st.success("✨🎉 **จบการสุ่มรางวัลกลุ่มนี้แล้ว!**")
-                    time.sleep(1.0)
-                    st.rerun() 
-        
-    elif st.session_state.selected_group and st.session_state.show_summary:
-         st.info("คุณกำลังอยู่ในโหมดแสดงผลสรุปรางวัล กรุณาเปลี่ยนกลุ่มเพื่อสุ่มรางวัลต่อ")
-    elif not st.session_state.selected_group and not st.session_state.show_summary:
-         st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
+                        with col_left_balloons:
+                            st.balloons()
+                        with col_right_balloons:
+                            st.balloons()
+                            
+                        st.success("✨🎉 **จบการสุ่มรางวัลกลุ่มนี้แล้ว!**")
+                        time.sleep(1.0)
+                        st.rerun() 
+            
+        else:
+             st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
          
-    st.markdown("---")
+        st.markdown("---")
     
     # ----------------------------------------------------
-    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวมและ QR Code (แสดงทั้ง 2 โหมด)
+    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (แสดงเสมอเมื่อมีประวัติ)
     # ----------------------------------------------------
     if st.session_state.draw_history:
         
@@ -471,16 +441,18 @@ def main():
         history_json = json.dumps(st.session_state.draw_history, ensure_ascii=False)
         encoded_history = urllib.parse.quote(history_json)
         
-        # 2. สร้าง URL พร้อม Parameter (สำหรับแท็บใหม่)
-        BASE_URL = "https://raffle-draw-app-lertwasin.streamlit.app/"
+        # 2. สร้าง URL พร้อม Parameter 
+        # *** ตรวจสอบ URL นี้ว่าตรงกับ URL ของ Streamlit App ของคุณ ***
+        BASE_URL = "https://raffle-draw-app-lertwasin.streamlit.app/" 
         SUMMARY_URL = f"{BASE_URL}?results={encoded_history}"
         
-        # 3. แสดงปุ่ม (แสดงตลอดเวลาเมื่อมีประวัติ)
+        # 3. แสดงปุ่ม (หากไม่อยู่ในโหมดสรุป)
         if not st.session_state.show_summary:
             st.subheader("🎉 ตรวจสอบผลรางวัลรวมทั้งหมด")
             col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
             with col_btn_center:
+                # ใช้ HTML เพื่อเปิดแท็บใหม่และส่งข้อมูลผ่าน URL Parameter
                 st.markdown(f"""
                 <a href="{SUMMARY_URL}" target="_blank">
                     <button style='
@@ -502,14 +474,19 @@ def main():
             
         
         # ----------------------------------------------------
-        # 6. ส่วนแสดงผลสรุป, QR Code และ Excel (แสดงเฉพาะเมื่อมี Parameter หรือสุ่มเสร็จ)
+        # 6. ส่วนแสดงผลสรุป, QR Code และ Excel (แสดงเฉพาะเมื่ออยู่ในโหมดสรุป)
         # ----------------------------------------------------
-        if st.session_state.show_summary: # โหมดแสดงผลสรุป
+        if st.session_state.show_summary: 
             
             st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
             st.markdown("---")
             
-            # 1. แสดง QR Code สำหรับการตรวจสอบ
+            if not st.session_state.draw_history:
+                 st.warning("⚠️ ไม่พบประวัติการสุ่มรางวัล กรุณากลับไปหน้าหลักเพื่อเริ่มสุ่ม")
+                 st.markdown(f"[กลับไปหน้าหลัก]({BASE_URL})")
+                 return
+                 
+            # 1. แสดง QR Code สำหรับการตรวจสอบ (ใช้ URL ที่มี Parameter)
             st.subheader("📢 QR Code สำหรับการตรวจสอบผลรางวัลรวม")
             
             qr_base64_summary = create_qrcode_base64(SUMMARY_URL)
