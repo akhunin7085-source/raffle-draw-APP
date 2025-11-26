@@ -1,7 +1,6 @@
 streamlit
 pandas
-random
 openpyxl
-qrcode
-Pillow
 xlsxwriter
+qrcode
+Pillow  # เพิ่ม Pillow เข้ามาตรงๆ เพื่อให้แน่ใจว่าถูกติดตั้ง
