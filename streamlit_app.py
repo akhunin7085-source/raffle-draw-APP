@@ -9,17 +9,20 @@ import base64
 import qrcode 
 import json 
 import urllib.parse 
+import numpy as np # สำหรับ pd.notna
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย (เหมือนเดิม) ***
+# *** ฟังก์ชันผู้ช่วย ***
 # ----------------------------------------------------
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     employee_data = pd.DataFrame()
     prize_data = pd.DataFrame()
     
+    # 🚨 แก้ไข SyntaxError: ลบ Emoji และอักขระพิเศษออกจาก String
     if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
-        st.error(⚠️ ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
+        # 🚨 บรรทัดนี้คือที่เกิด SyntaxError ให้ลบ Emoji ออก
+        st.error("ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
         return pd.DataFrame(), pd.DataFrame()
         
     st.info("กำลังโหลดข้อมูล...")
@@ -32,11 +35,11 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
         required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ']
         
         if not all(col in employee_data.columns for col in required_emp_cols):
-            st.error(f"❌ ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
+            st.error(f"ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
             return pd.DataFrame(), pd.DataFrame()
             
         if not all(col in prize_data.columns for col in required_prize_cols):
-            st.error(f"❌ ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
+            st.error(f"ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
             return pd.DataFrame(), pd.DataFrame()
 
         prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].fillna(0).astype(int)
@@ -45,26 +48,30 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
              employee_data['สถานะ'] = 'พร้อมสุ่ม'
         
     except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาดในการโหลด/ประมวลผลข้อมูล: {e}")
+        st.error(f"เกิดข้อผิดพลาดในการโหลด/ประมวลผลข้อมูล: {e}")
         return pd.DataFrame(), pd.DataFrame()
 
     return employee_data, prize_data 
 
 def run_draw(group, emp_df, prize_df):
-    # ... (โค้ด run_draw เหมือนเดิม)
     group_clean = str(group).strip()
     available_employees = emp_df[(emp_df['กลุ่มจับรางวัล'] == group_clean) & (emp_df['สถานะ'] == 'พร้อมสุ่ม')]
     available_prizes = prize_df[(prize_df['กลุ่มจับรางวัล'] == group_clean) & (prize_df['จำนวนคงเหลือ'] > 0)]
+    
     prize_list = []
     for index, row in available_prizes.iterrows():
         prize_list.extend([row['ชื่อของขวัญ']] * row['จำนวนคงเหลือ'])
+        
     max_draws = min(len(available_employees), len(prize_list))
+    
     if max_draws == 0:
-        st.error(f"⚠️ **กลุ่ม {group}**: ไม่มีพนักงานที่ยังไม่ได้สุ่ม หรือไม่มีของขวัญเหลือแล้ว")
+        st.error(f"กลุ่ม {group}: ไม่มีพนักงานที่ยังไม่ได้สุ่ม หรือไม่มีของขวัญเหลือแล้ว")
         return []
+        
     selected_employee_data = available_employees[['ชื่อ-นามสกุล', 'แผนก']].sample(max_draws)
     selected_employees = selected_employee_data.values.tolist() 
     selected_prizes = random.sample(prize_list, max_draws)
+    
     results = list(zip(selected_employees, selected_prizes))
     return results
 
@@ -79,6 +86,7 @@ def get_base64_image(image_file):
             mime_type = 'image/jpeg'
         else:
             mime_type = 'image/jpg' 
+            
         return f"data:{mime_type};base64,{data}"
     except FileNotFoundError:
         return None
@@ -96,9 +104,9 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # ... (โค้ด Sidebar และ CSS เหมือนเดิม) ...
+    # ... (ส่วน Sidebar)
     with st.sidebar:
-        st.header("⚙️ ตั้งค่าโปรแกรม")
+        st.header("ตั้งค่าโปรแกรม")
         default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 🎁 (Raffle Draw)"
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
@@ -112,8 +120,6 @@ def main():
     BACKGROUND_IMAGE_FILE = 'background.jpg'  
     base64_bg = get_base64_image(BACKGROUND_IMAGE_FILE)
 
-    # 🚨 แก้ไข CSS เพื่อแก้ NameError: 'padding' is not defined (จากรูป image_1b50fa.png)
-    # ต้องมั่นใจว่าโค้ด CSS ไม่มีการอ้างอิงตัวแปรที่ไม่ได้ประกาศ
     if base64_bg:
         background_css = f"""
         .stApp {{ 
@@ -126,6 +132,7 @@ def main():
     else:
         background_css = ".stApp { background-color: #0e1117; }" 
         
+    # 🚨 แก้ไข NameError: name 'padding' is not defined (โดยการลบตัวแปร padding ที่ไม่ได้ประกาศออกไป)
     st.markdown(f"""
         <style>
         {background_css}
@@ -143,7 +150,7 @@ def main():
             border-radius: 10px;
             padding: 20px;
         }}
-        /* ... (CSS อื่นๆ) ... */
+        /* ... (CSS อื่นๆ เพื่อตกแต่ง) ... */
         .success-box {{ 
             background-color: #1a5631; 
             color: white; 
@@ -201,8 +208,9 @@ def main():
         """, unsafe_allow_html=True)
     
     # ----------------------------------------------------
-    # 2. โหลดและเก็บข้อมูลใน Session State (ปรับปรุง)
+    # 2. โหลดและเก็บข้อมูลใน Session State (แก้ NameError: prize_df)
     # ----------------------------------------------------
+    # 🚨 โค้ดนี้จะโหลดข้อมูลและเก็บใน st.session_state เพื่อแก้ NameError: prize_df 
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
         st.session_state.emp_df = emp_df
@@ -213,8 +221,7 @@ def main():
     if st.session_state.emp_df.empty:
          return 
 
-    # 🚨 แก้ไขการจัดการข้อมูลกลุ่ม (จากรูป image_fff452.jpg - TypeError: not supported between str and float)
-    # เพื่อจัดการ NaN ที่อาจจะอยู่ในคอลัมน์ 'กลุ่มจับรางวัล' 
+    # 🚨 แก้ไข TypeError: not supported between 'str' and 'float'
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
     groups = sorted(list(set(groups))) 
@@ -238,7 +245,7 @@ def main():
                     st.session_state.selected_group = group
                     st.rerun() 
     else:
-        st.warning("⚠️ ไม่พบกลุ่มจับรางวัลที่ถูกต้องในไฟล์ข้อมูล โปรดตรวจสอบคอลัมน์ 'กลุ่มจับรางวัล'")
+        st.warning("ไม่พบกลุ่มจับรางวัลที่ถูกต้องในไฟล์ข้อมูล โปรดตรวจสอบคอลัมน์ 'กลุ่มจับรางวัล'")
 
     st.markdown("---")
     
@@ -258,23 +265,25 @@ def main():
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
                 if draw_results:
-                    st.subheader(f"✨ เริ่มการสุ่มกลุ่ม **{selected_group}** ✨")
+                    # 🚨 แก้ไข SyntaxError: ลบ Emoji ใน Subheader
+                    st.subheader(f"เริ่มการสุ่มกลุ่ม **{selected_group}**") 
                     current_winner_box = st.empty() 
                     
                     st.balloons() 
-                    time.sleep(1) # หน่วงเวลาให้บอลลูนแสดง
+                    time.sleep(1) 
                         
                     for i, item in enumerate(draw_results):
                         
                         try:
                             (winner_name, winner_dept), prize = item
                         except (ValueError, TypeError):
-                            st.error(f"❌ โครงสร้างข้อมูลผลลัพธ์ผิดพลาดในรายการที่ {i+1} : {item}")
+                            st.error(f"โครงสร้างข้อมูลผลลัพธ์ผิดพลาดในรายการที่ {i+1} : {item}")
                             continue
                         
                         # A. Show rolling animation 
                         with current_winner_box.container():
-                            st.markdown(f"## 🥁 กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**... 🥁") 
+                            # 🚨 แก้ไข SyntaxError: ลบ Emoji ใน String
+                            st.markdown(f"## กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**...") 
                         time.sleep(0.5)
                         
                         # B. Announce Winner
@@ -289,32 +298,26 @@ def main():
                             st.markdown(winner_message, unsafe_allow_html=True)
                             st.markdown("---")
                             
-                        # C. อัปเดตสถานะและเก็บประวัติ
-                        # อัปเดต emp_df
+                        # C. อัปเดตสถานะและเก็บประวัติ (ใช้ st.session_state)
                         idx_emp = st.session_state.emp_df.index[st.session_state.emp_df['ชื่อ-นามสกุล'] == winner_name].tolist()
                         if idx_emp:
                             st.session_state.emp_df.loc[idx_emp[0], 'สถานะ'] = 'ได้รับแล้ว'
                         
-                        # อัปเดต prize_df
                         idx_prize = st.session_state.prize_df.index[st.session_state.prize_df['ชื่อของขวัญ'] == prize].tolist()
                         if idx_prize:
                             current_qty = st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ']
                             st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
                         
-                        # บันทึกประวัติ (ใน Session State)
                         st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
                                                               'แผนก': winner_dept, 
                                                               'รายการของขวัญ': prize})
                         
                         time.sleep(3.0) 
                         
-                    # D. Grand Finale 
                     st.empty() 
                     st.balloons()
-                    st.success("✨🎉 **จบการสุ่มรางวัลกลุ่มนี้แล้ว!**")
-                    
+                    st.success("🎉 จบการสุ่มรางวัลกลุ่มนี้แล้ว!")
                     time.sleep(1.0)
-                    # 🚨 ไม่ต้อง rerun ให้แสดงปุ่มลิงก์ไปหน้า Summary แทน
                     
         
     else:
@@ -326,15 +329,13 @@ def main():
     # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (ไปยังหน้า Summary.py)
     # ----------------------------------------------------
     if st.session_state.draw_history:
-        st.subheader("🎉 ตรวจสอบผลรางวัลรวมทั้งหมด")
+        st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
         
-        # 🚨 โค้ด HTML เพื่อเปิดลิงก์ไปยังไฟล์ Summary.py ในโฟลเดอร์ pages
-        SUMMARY_APP_PATH = "pages/1_Summary" 
+        SUMMARY_APP_PATH = "1_Summary" 
         
         col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
         with col_btn_center:
-            # ใช้โค้ด HTML เพื่อสร้างปุ่มที่เปิดในแท็บใหม่ (target="_blank")
             st.markdown(f"""
             <a href="{SUMMARY_APP_PATH}" target="_blank">
                 <button style='
