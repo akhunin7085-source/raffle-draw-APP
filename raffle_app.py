@@ -43,18 +43,26 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
             st.error(f"❌ ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
             return pd.DataFrame(), pd.DataFrame()
 
+        # การจัดการข้อมูลให้มั่นใจว่าเป็นตัวเลข
         prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].fillna(0) 
         prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].astype(int)
         
+        # การจัดการข้อมูลกลุ่มจับรางวัลให้เป็น String และลบช่องว่าง
         if 'กลุ่มจับรางวัล' in employee_data.columns:
-            employee_data['กลุ่มจับรางวัล'] = employee_data['กลุ่มจับรางวัล'].astype(str).str.strip()
+            # แก้ไข Type Error: '/ not supported between instances of 'str' and 'float' (จากภาพที่ผู้ใช้ส่งมา)
+            employee_data['กลุ่มจับรางวัล'] = employee_data['กลุ่มจับรางวัล'].astype(str).str.strip() 
         if 'กลุ่มจับรางวัล' in prize_data.columns:
             prize_data['กลุ่มจับรางวัล'] = prize_data['กลุ่มจับรางวัล'].astype(str).str.strip()
             
         if 'สถานะ' not in employee_data.columns:
              employee_data['สถานะ'] = 'พร้อมสุ่ม'
-
         
+        # แก้ไข NameError: name 'prize_df' is not defined (จากภาพที่ผู้ใช้ส่งมา)
+        # ตรวจสอบว่า DataFrame ถูกสร้างขึ้นอย่างถูกต้องแล้วก่อน return
+        if employee_data.empty or prize_data.empty:
+             st.error("❌ โหลดไฟล์ข้อมูลไม่สำเร็จ หรือไฟล์ว่างเปล่า")
+             return pd.DataFrame(), pd.DataFrame()
+
     except ValueError as e:
         st.error(f"❌ ข้อผิดพลาดในการแปลงข้อมูล: ตรวจสอบคอลัมน์ 'จำนวนคงเหลือ' ในไฟล์ของขวัญ ว่ามีข้อความที่ไม่ใช่ตัวเลขหรือไม่: ({e})")
         return pd.DataFrame(), pd.DataFrame()
@@ -104,6 +112,8 @@ def create_print_ready_excel():
     
     output = io.BytesIO()
     try:
+        # **แก้ไขปัญหา ModuleNotFoundError: No module named 'xlsxwriter'**
+        import xlsxwriter 
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer: 
             final_df.to_excel(writer, index=False, sheet_name='ผลจับรางวัลปีใหม่')
             worksheet = writer.sheets['ผลจับรางวัลปีใหม่']
@@ -113,7 +123,7 @@ def create_print_ready_excel():
             worksheet.set_column('D:D', 30) 
             worksheet.set_column('E:E', 25) 
     except ImportError:
-         st.error("❌ ไม่พบ Library 'xlsxwriter' โปรดติดตั้งด้วยคำสั่ง: pip install xlsxwriter")
+         st.error("❌ ไม่พบ Library 'xlsxwriter' โปรดตรวจสอบไฟล์ requirements.txt และติดตั้งด้วยคำสั่ง: pip install xlsxwriter")
          return None
     except Exception as e:
          st.error(f"❌ เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: {e}")
@@ -122,7 +132,7 @@ def create_print_ready_excel():
     processed_data = output.getvalue()
     return processed_data
 
-# --- NEW FUNCTION: สร้าง QR Code จากข้อความและแปลงเป็น Base64 (ใช้ซ้ำได้) ---
+# --- ฟังก์ชันสร้าง QR Code จากข้อความ/URL และแปลงเป็น Base64 ---
 def create_qrcode_base64(text_data):
     """สร้าง QR Code จากข้อความและส่งคืน Base64 String สำหรับใช้ใน HTML"""
     try:
@@ -134,7 +144,8 @@ def create_qrcode_base64(text_data):
         )
         qr.add_data(text_data)
         qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
+        # **ใช้ PIL Image object ที่สร้างโดย qrcode library**
+        img = qr.make_image(fill_color="black", back_color="white").convert('RGB') 
         
         buffer = io.BytesIO()
         img.save(buffer, format="PNG")
@@ -144,8 +155,10 @@ def create_qrcode_base64(text_data):
         return f"data:image/png;base64,{base64_img}"
         
     except ImportError:
+        st.error("❌ ไม่พบ Library qrcode หรือ Pillow โปรดตรวจสอบ requirements.txt")
         return None 
     except Exception as e:
+        st.error(f"❌ เกิดข้อผิดพลาดในการสร้าง QR Code: {e}")
         return None
 
 # --- ฟังก์ชันแปลงไฟล์ภาพพื้นหลังให้เป็น Base64 สำหรับ CSS Background ---
@@ -308,6 +321,7 @@ def main():
     if st.session_state.emp_df.empty:
          return 
 
+    # การดึงรายการกลุ่ม ต้องมั่นใจว่าข้อมูลเป็น String แล้ว
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups]
     groups = [g for g in groups if g != "" and g.lower() != "nan"]
@@ -350,6 +364,7 @@ def main():
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
                 if draw_results:
+                    # ล้างผลล่าสุด ก่อนเริ่มสุ่มกลุ่มใหม่
                     st.session_state.current_group_results = [] 
                     st.session_state.current_group_name = selected_group
 
@@ -401,9 +416,11 @@ def main():
                             st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
                         
                         result_item = (winner_name, winner_dept, prize)
+                        # บันทึกในประวัติรวม
                         st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
                                                               'แผนก': winner_dept, 
                                                               'รายการของขวัญ': prize})
+                        # บันทึกในผลล่าสุด
                         st.session_state.current_group_results.append(result_item) 
                         
                         time.sleep(3.0) 
@@ -442,8 +459,6 @@ def main():
                 result_html = ""
                 for i, (winner_name, winner_dept, prize) in enumerate(st.session_state.current_group_results):
                     
-                    # *** แก้ไข: ลบการสร้าง QR Code รายบุคคลออก ***
-
                     bg_color = "#1f2a37" if i % 2 == 0 else "#253040" 
                     border_color = "#ff4b4b" if i % 2 == 0 else "#4beaff" 
     
@@ -483,7 +498,7 @@ def main():
                 
         st.markdown("---") 
 
-   # ----------------------------------------------------
+    # ----------------------------------------------------
     # 6. ส่วนแสดงผลประวัติ, ปุ่มดาวน์โหลด, และ QR Code สรุปผลรวม
     # ----------------------------------------------------
     if st.session_state.draw_history:
@@ -492,16 +507,13 @@ def main():
         # --- แสดง QR Code สรุปผล ---
         st.markdown("### 📢 QR Code สำหรับการตรวจสอบผลรางวัลรวม")
         
-        # *** เปลี่ยนข้อความนี้เป็น URL สาธารณะจริงของคุณ ***
-        # ใช้ URL ที่ขึ้นต้นด้วย https://
-        summary_link = "https://raffle-draw-app-kstkwaon.streamlit.app"
+        # **สำคัญ: คุณต้องแทนที่ข้อความด้านล่างนี้ด้วย URL สาธารณะจริงของคุณ (https://your-app.streamlit.app)**
+        summary_link = "https://raffle-draw-app-kstkwaon.streamlit.app" 
         
-        # สร้าง QR Code จาก URL ใหม่
+        # สร้าง QR Code 
         qr_base64_summary = create_qrcode_base64(summary_link)
         
         if qr_base64_summary:
-            
-            # ... (ส่วนแสดงผล QR Code เหมือนเดิม) ...
             
             # แบ่งคอลัมน์ [1 (ว่าง), 2 (QR), 1 (ว่าง)]
             col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
@@ -531,11 +543,4 @@ def main():
                     use_container_width=True
                 )
         
-        # แสดงตารางประวัติ (ซ่อนอยู่ภายใต้ Checkbox)
-        if st.checkbox("แสดงตารางประวัติการสุ่มทั้งหมด (เพื่อการตรวจสอบ)", value=False):
-             history_display_df = pd.DataFrame(st.session_state.draw_history)
-             st.dataframe(history_display_df[['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ']], use_container_width=True)
-
-if __name__ == '__main__':
-
-    main()
+        # แสดงต
