@@ -12,9 +12,8 @@ import urllib.parse
 import numpy as np 
 
 # ----------------------------------------------------
-# *** การตั้งค่า Multi-page App แบบบังคับ (เพื่อแก้ Page Not Found) ***
+# *** การตั้งค่า Multi-page App แบบบังคับ ***
 # ----------------------------------------------------
-# โค้ดนี้ช่วยให้ Streamlit รู้จักหน้า Multi-page App ได้อย่างชัดเจนขึ้น
 PAGES = {
     "สุ่มรางวัลหลัก": "streamlit_app.py",
     "สรุปผลรางวัล": "pages/1_Summary.py"
@@ -25,7 +24,6 @@ PAGES = {
 # ----------------------------------------------------
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
-    # *** แก้ไข: กำหนดค่าเริ่มต้นให้กับ employee_data และ prize_data ***
     employee_data = pd.DataFrame() 
     prize_data = pd.DataFrame()  
     
@@ -60,7 +58,6 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
         return pd.DataFrame(), pd.DataFrame()
 
     st.success("โหลดข้อมูลสำเร็จแล้ว! พร้อมสุ่มรางวัล")
-    # *** คืนค่า employee_data และ prize_data ***
     return employee_data, prize_data 
 
 def run_draw(group, emp_df, prize_df):
@@ -116,8 +113,7 @@ def main():
     
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
-        # 🚨 ปรับเปลี่ยนชื่ออีกครั้งเพื่อบังคับ Redeploy
-        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX 🎁 (Raffle Draw)"
+        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX-2 🎁 (Raffle Draw)" # แก้ไขเพื่อกระตุ้น Redeploy
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         st.markdown("**ไฟล์ข้อมูล:**")
@@ -170,7 +166,8 @@ def main():
             font-weight: bold;
             text-align: center; 
         }}
-        .stButton>button {{
+        /* กำหนดสไตล์ปุ่มหลัก (Raffle Draw) */
+        .stButton>button[key="main_draw_btn"] {{ 
             background-color: #ff4b4b;
             color: white !important;
             border-radius: 8px;
@@ -180,14 +177,7 @@ def main():
             box-shadow: 0 4px 8px rgba(255, 75, 75, 0.4);
             transition: all 0.3s ease;
         }}
-        .stButton>button:hover {{
-            background-color: #ff6666;
-            box-shadow: 0 6px 12px rgba(255, 75, 75, 0.6);
-            transform: translateY(-2px);
-        }}
-        .stButton {{
-            margin-bottom: 10px; 
-        }}
+        /* กำหนดสไตล์ปุ่มเลือกกลุ่ม */
         .stButton>button[key^="group_btn_"] {{
             background-color: #3e4856 !important; 
             color: #4beaff !important; 
@@ -203,6 +193,18 @@ def main():
             background-color: #4beaff !important;
             color: #0e1117 !important;
         }}
+        /* กำหนดสไตล์ปุ่ม st.link_button (Summary) */
+        .stButton>button[key="summary_link_btn"] {{ 
+            background-color: #4beaff;
+            color: #0e1117;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 1.4em;
+            font-weight: bold;
+            width: 100%;
+            cursor: pointer;
+            border: none;
+        }}
         h1 {{
             color: #4beaff; 
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -211,12 +213,11 @@ def main():
         h2 {{
              text-align: center; 
         }}
-        
         </style>
         """, unsafe_allow_html=True)
     
     # ----------------------------------------------------
-    # 2. โหลดและเก็บข้อมูลใน Session State
+    # 2. โหลดและเก็บข้อมูลใน Session State (แก้ไขให้ครอบคลุม draw_history)
     # ----------------------------------------------------
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
@@ -224,6 +225,9 @@ def main():
         st.session_state.prize_df = prize_df
         st.session_state.draw_history = [] 
         st.session_state.selected_group = None 
+    # *** แก้ไข AttributeError: กำหนดค่าเริ่มต้นเสมอแม้ไม่ได้โหลดข้อมูลใหม่ ***
+    if 'draw_history' not in st.session_state:
+         st.session_state.draw_history = [] 
 
     if st.session_state.emp_df.empty:
          return 
@@ -329,29 +333,34 @@ def main():
          
     st.markdown("---")
     
-# ----------------------------------------------------
-# 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (แก้ไขให้เปิดในแท็บใหม่)
-# ----------------------------------------------------
-if st.session_state.draw_history:
-    st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
-    
-    # Path ที่ Streamlit ควรอ่านได้
-    FULL_SUMMARY_URL = "/1_Summary" 
-    
-    col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
-
-    with col_btn_center:
-        # *** ใช้ st.link_button แทน st.markdown/HTML เพื่อให้เปิด New Tab มั่นคงขึ้น ***
-        st.link_button(
-            label="🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)",
-            url=FULL_SUMMARY_URL,
-            help="คลิกเพื่อเปิดหน้าสรุปผลรางวัลในแท็บใหม่",
-            type="primary",
-            use_container_width=True
-        )
+    # ----------------------------------------------------
+    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (แก้ไขให้เปิดในแท็บใหม่ด้วย st.link_button)
+    # ----------------------------------------------------
+    # *** แก้ไข: ใช้ st.session_state.draw_history โดยตรงหลังกำหนดค่าเริ่มต้นแล้ว ***
+    if st.session_state.draw_history: 
+        st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
         
-st.markdown("---")
+        # Path ที่ Streamlit ควรอ่านได้
+        FULL_SUMMARY_URL = "/1_Summary" 
+        
+        col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
+
+        with col_btn_center:
+            # ใช้ st.link_button เพื่อให้เปิด New Tab ได้อย่างมั่นคง
+            st.link_button(
+                label="🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)",
+                url=FULL_SUMMARY_URL,
+                help="คลิกเพื่อเปิดหน้าสรุปผลรางวัลในแท็บใหม่",
+                type="primary",
+                use_container_width=True,
+                key="summary_link_btn" # ใส่ key เพื่อให้ใช้ CSS ที่กำหนดไว้
+            )
+            
+    st.markdown("---")
 
 if __name__ == '__main__':
+    # *** แก้ไข AttributeError: ตรวจสอบและกำหนดค่า draw_history ที่นี่อีกครั้งก่อนเรียก main() ***
+    if 'draw_history' not in st.session_state:
+         st.session_state.draw_history = [] 
+         
     main()
-
