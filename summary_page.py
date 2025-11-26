@@ -4,13 +4,35 @@ import io
 import base64 
 import qrcode 
 from datetime import datetime
+import os
+import json # **ใหม่: สำหรับจัดการไฟล์ JSON**
 
-# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด (คัดลอกมาจาก raffle_app.py) ---
-def create_print_ready_excel():
-    if 'draw_history' not in st.session_state or not st.session_state.draw_history:
+# ชื่อไฟล์สำหรับเก็บประวัติถาวร (ใช้ร่วมกัน 2 หน้า)
+HISTORY_FILE = 'draw_history.json' 
+
+# --- ฟังก์ชันโหลดประวัติจากไฟล์ JSON ---
+def load_history_from_file():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+                 content = f.read()
+                 if not content:
+                     return []
+                 f.seek(0)
+                 return json.load(f)
+        except json.JSONDecodeError:
+            return []
+        except Exception:
+            return []
+    return []
+
+
+# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด ---
+def create_print_ready_excel(history_data): 
+    if not history_data:
         return None
 
-    history_df = pd.DataFrame(st.session_state.draw_history)
+    history_df = pd.DataFrame(history_data) 
     history_df['ช่องเซ็นต์รับ'] = '' 
     
     final_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'ช่องเซ็นต์รับ']
@@ -38,9 +60,8 @@ def create_print_ready_excel():
     processed_data = output.getvalue()
     return processed_data
 
-# --- ฟังก์ชันสร้าง QR Code (คัดลอกมาจาก raffle_app.py) ---
+# --- ฟังก์ชันสร้าง QR Code ---
 def create_qrcode_base64(text_data):
-    """สร้าง QR Code จากข้อความและส่งคืน Base64 String สำหรับใช้ใน HTML"""
     try:
         qr = qrcode.QRCode(
             version=1,
@@ -60,7 +81,6 @@ def create_qrcode_base64(text_data):
         return f"data:image/png;base64,{base64_img}"
         
     except Exception as e:
-        # อาจเกิดจาก ImportError: qrcode หรือ Pillow
         st.error(f"❌ เกิดข้อผิดพลาดในการสร้าง QR Code: {e}")
         return None
 
@@ -76,9 +96,11 @@ def summary_main():
     st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
     st.markdown("---")
 
-    if 'draw_history' not in st.session_state or not st.session_state.draw_history:
+    # *** โค้ดใหม่: โหลดประวัติจากไฟล์ JSON ***
+    final_history = load_history_from_file()
+    
+    if not final_history:
         st.warning("⚠️ ยังไม่มีประวัติการสุ่มรางวัล กรุณากลับไปหน้าหลักเพื่อเริ่มสุ่ม")
-        # **สำคัญ: URL ต้องใช้ URL หลักของแอป**
         MAIN_APP_URL = "https://raffle-draw-app-lertwasin.streamlit.app/" 
         st.markdown(f"[กลับไปหน้าหลัก]({MAIN_APP_URL})")
         return
@@ -89,7 +111,6 @@ def summary_main():
     st.subheader("📢 QR Code สำหรับการตรวจสอบผลรางวัลรวม")
     
     # URL สำหรับ QR Code คือ URL ของหน้านี้เอง
-    # **สำคัญ: อัปเดต URL นี้**
     SUMMARY_PAGE_URL = "https://raffle-draw-app-lertwasin.streamlit.app/summary_page" 
     
     qr_base64_summary = create_qrcode_base64(SUMMARY_PAGE_URL)
@@ -108,11 +129,11 @@ def summary_main():
         st.markdown("---")
         
     # ----------------------------------------------------
-    # 2. ส่วนดาวน์โหลด Excel
+    # 2. ส่วนดาวน์โหลด Excel 
     # ----------------------------------------------------
     st.subheader("⬇️ ไฟล์ผลรางวัลสำหรับการพิมพ์")
     
-    excel_data = create_print_ready_excel()
+    excel_data = create_print_ready_excel(final_history) # ส่งข้อมูลประวัติเข้าไป
     
     if excel_data:
         col_d_left, col_d_center, col_d_right = st.columns([1, 1, 1])
@@ -132,7 +153,7 @@ def summary_main():
     # ----------------------------------------------------
     st.subheader("📊 ตารางประวัติการสุ่มทั้งหมด")
     
-    history_display_df = pd.DataFrame(st.session_state.draw_history)
+    history_display_df = pd.DataFrame(final_history) # ใช้ข้อมูลที่โหลดจากไฟล์
     st.dataframe(history_display_df[['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ']], use_container_width=True)
 
 if __name__ == '__main__':
