@@ -9,7 +9,7 @@ import base64
 import qrcode 
 import json 
 import urllib.parse 
-import numpy as np # สำหรับ pd.notna
+import numpy as np 
 
 # ----------------------------------------------------
 # *** ฟังก์ชันผู้ช่วย ***
@@ -19,9 +19,8 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     employee_data = pd.DataFrame()
     prize_data = pd.DataFrame()
     
-    # 🚨 แก้ไข SyntaxError: ลบ Emoji และอักขระพิเศษออกจาก String
+    # แก้ไข SyntaxError (ลบ Emoji ในส่วนที่มักมีปัญหาในการ encoding)
     if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
-        # 🚨 บรรทัดนี้คือที่เกิด SyntaxError ให้ลบ Emoji ออก
         st.error("ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
         return pd.DataFrame(), pd.DataFrame()
         
@@ -76,7 +75,6 @@ def run_draw(group, emp_df, prize_df):
     return results
 
 def get_base64_image(image_file):
-    # ... (โค้ดดึงภาพพื้นหลังเหมือนเดิม)
     try:
         with open(image_file, "rb") as f:
             data = base64.b64encode(f.read()).decode("utf-8")
@@ -104,9 +102,8 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # ... (ส่วน Sidebar)
     with st.sidebar:
-        st.header("ตั้งค่าโปรแกรม")
+        st.header("⚙️ ตั้งค่าโปรแกรม")
         default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 🎁 (Raffle Draw)"
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
@@ -132,7 +129,7 @@ def main():
     else:
         background_css = ".stApp { background-color: #0e1117; }" 
         
-    # 🚨 แก้ไข NameError: name 'padding' is not defined (โดยการลบตัวแปร padding ที่ไม่ได้ประกาศออกไป)
+    # แก้ไข NameError: name 'padding' is not defined
     st.markdown(f"""
         <style>
         {background_css}
@@ -150,7 +147,6 @@ def main():
             border-radius: 10px;
             padding: 20px;
         }}
-        /* ... (CSS อื่นๆ เพื่อตกแต่ง) ... */
         .success-box {{ 
             background-color: #1a5631; 
             color: white; 
@@ -210,7 +206,6 @@ def main():
     # ----------------------------------------------------
     # 2. โหลดและเก็บข้อมูลใน Session State (แก้ NameError: prize_df)
     # ----------------------------------------------------
-    # 🚨 โค้ดนี้จะโหลดข้อมูลและเก็บใน st.session_state เพื่อแก้ NameError: prize_df 
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
         st.session_state.emp_df = emp_df
@@ -221,7 +216,7 @@ def main():
     if st.session_state.emp_df.empty:
          return 
 
-    # 🚨 แก้ไข TypeError: not supported between 'str' and 'float'
+    # แก้ไข TypeError: not supported between 'str' and 'float'
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
     groups = sorted(list(set(groups))) 
@@ -265,7 +260,7 @@ def main():
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
                 if draw_results:
-                    # 🚨 แก้ไข SyntaxError: ลบ Emoji ใน Subheader
+                    # แก้ไข SyntaxError
                     st.subheader(f"เริ่มการสุ่มกลุ่ม **{selected_group}**") 
                     current_winner_box = st.empty() 
                     
@@ -282,7 +277,7 @@ def main():
                         
                         # A. Show rolling animation 
                         with current_winner_box.container():
-                            # 🚨 แก้ไข SyntaxError: ลบ Emoji ใน String
+                            # แก้ไข SyntaxError
                             st.markdown(f"## กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**...") 
                         time.sleep(0.5)
                         
@@ -326,24 +321,18 @@ def main():
     st.markdown("---")
     
     # ----------------------------------------------------
-    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (ไปยังหน้า Summary.py)
+    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (แก้ปัญหา Page Not Found)
     # ----------------------------------------------------
     if st.session_state.draw_history:
         st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
         
-        # 🚨 แก้ไขส่วนนี้: ใช้ Path โดยตรง (1_Summary)
-        SUMMARY_APP_PATH = "1_Summary" 
-        
-        # 🚨 URL เต็มสำหรับการลิงก์ (สำคัญมากในการแก้ไข)
-        # URL ของแอปพลิเคชันหลักคือ: https://draw-app-lertwasin.streamlit.app/
-        # Path ที่ถูกต้องของหน้า Summary คือ: /1_Summary
+        # แก้ไขการลิงก์โดยใช้ Path ที่ Streamlit ควรอ่านได้
         FULL_SUMMARY_URL = "/1_Summary" 
         
         col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
         with col_btn_center:
             # ใช้โค้ด HTML เพื่อเปิดลิงก์ไปยังหน้า Summary ในแท็บใหม่
-            # 🚨 แทนที่ SUMMARY_APP_PATH ด้วย FULL_SUMMARY_URL ในแท็ก <a>
             st.markdown(f"""
             <a href="{FULL_SUMMARY_URL}" target="_blank">
                 <button style='
@@ -366,4 +355,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
