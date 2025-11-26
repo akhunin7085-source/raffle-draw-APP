@@ -7,39 +7,10 @@ from datetime import datetime
 import os
 import base64 
 import qrcode 
-import json # **ใหม่: สำหรับจัดการไฟล์ JSON**
+import json 
+import urllib.parse # สำหรับเข้ารหัส URL Parameter
 
-# ชื่อไฟล์สำหรับเก็บประวัติถาวร (ใช้ร่วมกัน 2 หน้า)
-HISTORY_FILE = 'draw_history.json' 
-
-# --- ฟังก์ชันบันทึกประวัติลงไฟล์ JSON ---
-def save_history_to_file(history_data):
-    try:
-        # บันทึกข้อมูลประวัติ (เป็น List of Dicts) ลงในไฟล์ JSON
-        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
-            json.dump(history_data, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        # ใน Streamlit Cloud ถ้าเกิด Error ตรงนี้ อาจจะเกี่ยวข้องกับสิทธิ์การเข้าถึงโฟลเดอร์
-        st.error(f"❌ บันทึกไฟล์ประวัติไม่สำเร็จ: {e}") 
-
-# --- ฟังก์ชันโหลดประวัติจากไฟล์ JSON ---
-def load_history_from_file():
-    if os.path.exists(HISTORY_FILE):
-        try:
-            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
-                # ตรวจสอบว่าไฟล์ว่างหรือไม่
-                content = f.read()
-                if not content:
-                    return []
-                f.seek(0) # กลับไปอ่านใหม่
-                return json.load(f)
-        except json.JSONDecodeError:
-            return []
-        except Exception:
-            return []
-    return []
-
-# --- ฟังก์ชันโหลดข้อมูล (จัดการ Error และแปลงชนิดข้อมูล) ---
+# --- ฟังก์ชันโหลดข้อมูล (เหมือนเดิม) ---
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     
@@ -53,6 +24,7 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     st.info(f"กำลังโหลดข้อมูลจากไฟล์: {emp_file} และ {prize_file}...")
     
     try:
+        # ... (โค้ดโหลดข้อมูลเหมือนเดิม)
         if emp_file.endswith(('.csv', '.CSV')):
              employee_data = pd.read_csv(emp_file)
         else:
@@ -74,11 +46,9 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
             st.error(f"❌ ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
             return pd.DataFrame(), pd.DataFrame()
 
-        # การจัดการข้อมูลให้มั่นใจว่าเป็นตัวเลข
         prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].fillna(0) 
         prize_data['จำนวนคงเหลือ'] = prize_data['จำนวนคงเหลือ'].astype(int)
         
-        # การจัดการข้อมูลกลุ่มจับรางวัลให้เป็น String และลบช่องว่าง
         if 'กลุ่มจับรางวัล' in employee_data.columns:
             employee_data['กลุ่มจับรางวัล'] = employee_data['กลุ่มจับรางวัล'].astype(str).str.strip() 
         if 'กลุ่มจับรางวัล' in prize_data.columns:
@@ -101,9 +71,9 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     st.success("✅ โหลดข้อมูลสำเร็จแล้ว! พร้อมเริ่มจับรางวัล")
     return employee_data, prize_data 
 
-# --- ฟังก์ชันหลักในการสุ่ม ---
+# --- ฟังก์ชันหลักในการสุ่ม (เหมือนเดิม) ---
 def run_draw(group, emp_df, prize_df):
-    
+    # ... (โค้ด run_draw เหมือนเดิม)
     group_clean = str(group).strip()
 
     available_employees = emp_df[(emp_df['กลุ่มจับรางวัล'] == group_clean) & (emp_df['สถานะ'] == 'พร้อมสุ่ม')]
@@ -126,9 +96,70 @@ def run_draw(group, emp_df, prize_df):
     results = list(zip(selected_employees, selected_prizes))
     return results
 
+# --- ฟังก์ชันสร้างไฟล์ Excel สำหรับดาวน์โหลด (คัดลอกมาทั้งหมด) ---
+def create_print_ready_excel(history_data):
+    if not history_data:
+        return None
 
-# --- ฟังก์ชันแปลงไฟล์ภาพพื้นหลังให้เป็น Base64 สำหรับ CSS Background ---
+    history_df = pd.DataFrame(history_data)
+    history_df['ช่องเซ็นต์รับ'] = '' 
+    
+    final_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'ช่องเซ็นต์รับ']
+    final_df = history_df[final_cols]
+    final_df.insert(0, 'ลำดับ', range(1, 1 + len(final_df)))
+    
+    output = io.BytesIO()
+    try:
+        import xlsxwriter 
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer: 
+            final_df.to_excel(writer, index=False, sheet_name='ผลจับรางวัลปีใหม่')
+            worksheet = writer.sheets['ผลจับรางวัลปีใหม่']
+            worksheet.set_column('A:A', 8) 
+            worksheet.set_column('B:B', 20) 
+            worksheet.set_column('C:C', 20) 
+            worksheet.set_column('D:D', 30) 
+            worksheet.set_column('E:E', 25) 
+    except ImportError:
+         st.error("❌ ไม่พบ Library 'xlsxwriter' โปรดตรวจสอบไฟล์ requirements.txt และติดตั้งด้วยคำสั่ง: pip install xlsxwriter")
+         return None
+    except Exception as e:
+         st.error(f"❌ เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: {e}")
+         return None
+    
+    processed_data = output.getvalue()
+    return processed_data
+
+# --- ฟังก์ชันสร้าง QR Code จากข้อความ/URL และแปลงเป็น Base64 (เหมือนเดิม) ---
+def create_qrcode_base64(text_data):
+    # ... (โค้ด create_qrcode_base64 เหมือนเดิม)
+    try:
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(text_data)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white").convert('RGB') 
+        
+        buffer = io.BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        
+        base64_img = base64.b64encode(buffer.getvalue()).decode()
+        return f"data:image/png;base64,{base64_img}"
+        
+    except ImportError:
+        st.error("❌ ไม่พบ Library qrcode หรือ Pillow โปรดตรวจสอบ requirements.txt")
+        return None 
+    except Exception as e:
+        st.error(f"❌ เกิดข้อผิดพลาดในการสร้าง QR Code: {e}")
+        return None
+
+# --- ฟังก์ชันแปลงไฟล์ภาพพื้นหลังให้เป็น Base64 สำหรับ CSS Background (เหมือนเดิม) ---
 def get_base64_image(image_file):
+    # ... (โค้ด get_base64_image เหมือนเดิม)
     try:
         with open(image_file, "rb") as f:
             data = base64.b64encode(f.read()).decode("utf-8")
@@ -145,11 +176,12 @@ def get_base64_image(image_file):
     except Exception as e:
         return None
 
+
 # --- Main Program (Streamlit UI) ---
 def main():
     
     # ----------------------------------------------------
-    # 1. การตั้งค่าหน้าจอและ CSS Global
+    # 1. การตั้งค่าหน้าจอและ CSS Global (เหมือนเดิม)
     # ----------------------------------------------------
     st.set_page_config(
         layout="wide",
@@ -157,6 +189,8 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
+    # ... (โค้ด CSS และ Sidebar เหมือนเดิม)
+
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
         
@@ -272,22 +306,40 @@ def main():
     st.title(custom_title)
     st.markdown("---")
 
-    # โหลดและเก็บข้อมูลใน Session State (โหลดประวัติจากไฟล์ JSON)
+    # โหลดและเก็บข้อมูลใน Session State (ใช้ Session State เป็นที่เก็บประวัติหลัก)
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
         st.session_state.emp_df = emp_df
         st.session_state.prize_df = prize_df
-        
-        # *** เปลี่ยนมาโหลดประวัติจากไฟล์แทน ***
-        st.session_state.draw_history = load_history_from_file() 
-        
+        st.session_state.draw_history = [] # กลับมาใช้ Session State เป็นที่เก็บประวัติ
         st.session_state.current_group_results = [] 
         st.session_state.current_group_name = ""
         st.session_state.selected_group = None 
+        # State สำหรับการแสดงผลสรุปเมื่อเปิดแท็บใหม่
+        st.session_state.show_summary = False
 
     if st.session_state.emp_df.empty:
          return 
 
+    # *** โค้ดใหม่: ตรวจสอบ URL Parameter เมื่อโหลดหน้า ***
+    query_params = st.query_params
+    
+    if 'results' in query_params and not st.session_state.draw_history:
+        try:
+            # ถอดรหัส JSON จาก URL Parameter
+            encoded_results = query_params['results'][0] if isinstance(query_params['results'], list) else query_params['results']
+            decoded_json = urllib.parse.unquote(encoded_results)
+            history_from_url = json.loads(decoded_json)
+            
+            # ยัดข้อมูลที่ได้รับกลับเข้า Session State (เพื่อให้ฟังก์ชันอื่นใช้ได้)
+            st.session_state.draw_history = history_from_url
+            st.session_state.show_summary = True
+            
+        except Exception:
+            # หากถอดรหัสไม่ได้ ให้ทำตามปกติ
+            pass
+    
+    # ดึงรายการกลุ่ม
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups]
     groups = [g for g in groups if g != "" and g.lower() != "nan"]
@@ -308,6 +360,7 @@ def main():
             with cols_center[i + 1]: 
                 if st.button(group, key=f"group_btn_{group}", help=f"คลิกเพื่อเลือกกลุ่ม {group} เพื่อเตรียมสุ่ม", use_container_width=True):
                     st.session_state.selected_group = group
+                    st.session_state.show_summary = False # ซ่อนสรุปผลเมื่อเริ่มสุ่มใหม่
                     st.rerun() 
     else:
         st.warning("⚠️ ไม่พบกลุ่มจับรางวัลที่ถูกต้องในไฟล์ข้อมูล โปรดตรวจสอบคอลัมน์ 'กลุ่มจับรางวัล' ในไฟล์พนักงานว่ามีข้อมูลหรือไม่")
@@ -317,7 +370,7 @@ def main():
     # ----------------------------------------------------
     # 4. ปุ่มสุ่มหลักและแสดงผล
     # ----------------------------------------------------
-    if st.session_state.selected_group:
+    if st.session_state.selected_group and not st.session_state.show_summary: # ไม่แสดงเมื่ออยู่โหมดสรุป
         selected_group = st.session_state.selected_group
         
         col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
@@ -382,15 +435,10 @@ def main():
                         
                         result_item = (winner_name, winner_dept, prize)
                         
-                        # ดึงประวัติปัจจุบันที่โหลดจากไฟล์มาเพิ่ม (เพื่อให้บันทึกไฟล์ได้ถูกต้อง)
-                        history_from_file = load_history_from_file()
-                        history_from_file.append({'ชื่อ-นามสกุล': winner_name, 
+                        st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
                                                               'แผนก': winner_dept, 
                                                               'รายการของขวัญ': prize})
-                        # อัปเดต session state
-                        st.session_state.draw_history = history_from_file 
                         
-                        # บันทึกในผลล่าสุด (แสดงผลชั่วคราว)
                         st.session_state.current_group_results.append(result_item) 
                         
                         time.sleep(3.0) 
@@ -404,52 +452,103 @@ def main():
                         st.balloons()
                         
                     st.success("✨🎉 **จบการสุ่มรางวัลกลุ่มนี้แล้ว!**")
-                    
-                    # *** โค้ดสำคัญ: บันทึกประวัติลงไฟล์ JSON ทันทีที่สุ่มเสร็จ ***
-                    if st.session_state.draw_history:
-                        save_history_to_file(st.session_state.draw_history)
-                        
                     time.sleep(1.0)
                     st.rerun() 
         
-    else:
+    elif st.session_state.selected_group and st.session_state.show_summary:
+         st.info("คุณกำลังอยู่ในโหมดแสดงผลสรุปรางวัล กรุณาเปลี่ยนกลุ่มเพื่อสุ่มรางวัลต่อ")
+    elif not st.session_state.selected_group and not st.session_state.show_summary:
          st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
-    
+         
     st.markdown("---")
-
-
+    
     # ----------------------------------------------------
-    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (New Section)
+    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวมและ QR Code (แสดงทั้ง 2 โหมด)
     # ----------------------------------------------------
     if st.session_state.draw_history:
-        st.subheader("🎉 ตรวจสอบผลรางวัลรวมทั้งหมด")
         
-        # **สำคัญ: อัปเดต URL นี้** # ต้องแน่ใจว่า Streamlit Cloud Deploy ไฟล์ summary_page.py แล้ว (จะเป็น /summary_page)
-        SUMMARY_APP_URL = "https://raffle-draw-app-lertwasin.streamlit.app/summary_page" 
+        # 1. การเข้ารหัสข้อมูลทั้งหมด
+        history_json = json.dumps(st.session_state.draw_history, ensure_ascii=False)
+        encoded_history = urllib.parse.quote(history_json)
         
-        col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
+        # 2. สร้าง URL พร้อม Parameter (สำหรับแท็บใหม่)
+        BASE_URL = "https://raffle-draw-app-lertwasin.streamlit.app/"
+        SUMMARY_URL = f"{BASE_URL}?results={encoded_history}"
+        
+        # 3. แสดงปุ่ม (แสดงตลอดเวลาเมื่อมีประวัติ)
+        if not st.session_state.show_summary:
+            st.subheader("🎉 ตรวจสอบผลรางวัลรวมทั้งหมด")
+            col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
-        with col_btn_center:
-            # ใช้โค้ด HTML เพื่อสร้างปุ่มที่เปิดในแท็บใหม่ (target="_blank")
-            st.markdown(f"""
-            <a href="{SUMMARY_APP_URL}" target="_blank">
-                <button style='
-                    background-color: #4beaff;
-                    color: #0e1117;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font-size: 1.4em;
-                    font-weight: bold;
-                    width: 100%;
-                    cursor: pointer;
-                    border: none;
-                '>
-                🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)
-                </button>
-            </a>
-            """, unsafe_allow_html=True)
+            with col_btn_center:
+                st.markdown(f"""
+                <a href="{SUMMARY_URL}" target="_blank">
+                    <button style='
+                        background-color: #4beaff;
+                        color: #0e1117;
+                        border-radius: 8px;
+                        padding: 10px 20px;
+                        font-size: 1.4em;
+                        font-weight: bold;
+                        width: 100%;
+                        cursor: pointer;
+                        border: none;
+                    '>
+                    🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)
+                    </button>
+                </a>
+                """, unsafe_allow_html=True)
+            st.markdown("---")
             
-    st.markdown("---")
+        
+        # ----------------------------------------------------
+        # 6. ส่วนแสดงผลสรุป, QR Code และ Excel (แสดงเฉพาะเมื่อมี Parameter หรือสุ่มเสร็จ)
+        # ----------------------------------------------------
+        if st.session_state.show_summary: # โหมดแสดงผลสรุป
+            
+            st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
+            st.markdown("---")
+            
+            # 1. แสดง QR Code สำหรับการตรวจสอบ
+            st.subheader("📢 QR Code สำหรับการตรวจสอบผลรางวัลรวม")
+            
+            qr_base64_summary = create_qrcode_base64(SUMMARY_URL)
+            
+            if qr_base64_summary:
+                col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
+                
+                with col_qr_center:
+                    st.markdown(f"""
+                    <div style='text-align: center; background-color: white; padding: 10px; border-radius: 5px; border: 2px solid #ff4b4b;'>
+                        <img src="{qr_base64_summary}" alt="Summary QR Code" style="width: 200px; height: 200px; display: block; margin: auto;">
+                        <p style='color: black; margin-top: 10px; font-weight: bold;'>สแกนเพื่อดูผลรางวัลทั้งหมด</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("---")
+            
+            # 2. ส่วนดาวน์โหลด Excel
+            st.subheader("⬇️ ไฟล์ผลรางวัลสำหรับการพิมพ์")
+            
+            excel_data = create_print_ready_excel(st.session_state.draw_history) 
+            
+            if excel_data:
+                col_d_left, col_d_center, col_d_right = st.columns([1, 1, 1])
+                with col_d_center:
+                    st.download_button(
+                        label="✅ ดาวน์โหลดไฟล์ Excel (พร้อมช่องเซ็นต์รับ)",
+                        data=excel_data,
+                        file_name=f'Raffle_Results_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+            st.markdown("---")
+            
+            # 3. แสดงตารางประวัติรวม
+            st.subheader("📊 ตารางประวัติการสุ่มทั้งหมด")
+            history_display_df = pd.DataFrame(st.session_state.draw_history) 
+            st.dataframe(history_display_df[['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ']], use_container_width=True)
 
+    
 if __name__ == '__main__':
     main()
