@@ -1,0 +1,7 @@
+streamlit
+pandas
+random
+openpyxl
+qrcode
+Pillow
+xlsxwriter
