@@ -21,12 +21,13 @@ PAGES = {
 } 
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย ***
+# *** ฟังก์ชันผู้ช่วย: load_data (แก้ไข NameError) ***
 # ----------------------------------------------------
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
-    employee_data = pd.DataFrame()
-    prize_data = pd.DataFrame()
+    # *** แก้ไข: กำหนดค่าเริ่มต้นให้กับ employee_data และ prize_data ***
+    employee_data = pd.DataFrame() 
+    prize_data = pd.DataFrame()  
     
     if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
         st.error("ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
@@ -36,7 +37,7 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     
     try:
         employee_data = pd.read_csv('employees.csv')
-        prize_data = pd.read_csv('prizes.csv')
+        prize_data = pd.read_csv('prizes.csv') 
         
         required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
         required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ']
@@ -59,7 +60,8 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
         return pd.DataFrame(), pd.DataFrame()
 
     st.success("โหลดข้อมูลสำเร็จแล้ว! พร้อมสุ่มรางวัล")
-    return employee_data, prize_df 
+    # *** คืนค่า employee_data และ prize_data ***
+    return employee_data, prize_data 
 
 def run_draw(group, emp_df, prize_df):
     group_clean = str(group).strip()
@@ -115,7 +117,7 @@ def main():
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
         # 🚨 ปรับเปลี่ยนชื่ออีกครั้งเพื่อบังคับ Redeploy
-        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.Final [Check] 🎁 (Raffle Draw)"
+        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX 🎁 (Raffle Draw)"
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         st.markdown("**ไฟล์ข้อมูล:**")
