@@ -543,4 +543,13 @@ def main():
                     use_container_width=True
                 )
         
-        # แสดงต
+        # แสดงตารางประวัติ (ซ่อนอยู่ภายใต้ Checkbox)
+        if st.checkbox("แสดงตารางประวัติการสุ่มทั้งหมด (เพื่อการตรวจสอบ)", value=False):
+             history_display_df = pd.DataFrame(st.session_state.draw_history)
+             st.dataframe(history_display_df[['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ']], use_container_width=True)
+
+if __name__ == '__main__':
+    # **แก้ไข NameError: name 'padding' is not defined (จากภาพที่ผู้ใช้ส่งมา)**
+    # ลบโค้ดที่ไม่เกี่ยวข้องกับ Streamlit หรือ CSS ที่ผิดพลาดออก 
+    # และเรียกใช้งาน main()
+    main()
