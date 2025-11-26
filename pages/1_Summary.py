@@ -21,7 +21,6 @@ def create_print_ready_excel(history_data):
     
     output = io.BytesIO()
     try:
-        # ต้องมี xlsxwriter ใน requirements.txt
         import xlsxwriter 
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer: 
             final_df.to_excel(writer, index=False, sheet_name='ผลจับรางวัลปีใหม่')
@@ -41,7 +40,6 @@ def create_print_ready_excel(history_data):
 # --- ฟังก์ชันสร้าง QR Code ---
 def create_qrcode_base64(text_data):
     try:
-        # ต้องมี qrcode ใน requirements.txt
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -68,6 +66,7 @@ def summary_main():
     st.set_page_config(
         layout="wide",
         page_title="สรุปผลรางวัลรวม", 
+        page_icon="🏆"  # <-- เพิ่มไอคอนเพื่อกระตุ้นการตรวจจับ
     )
 
     st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
