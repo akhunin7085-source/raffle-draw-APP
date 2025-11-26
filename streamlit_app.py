@@ -113,7 +113,7 @@ def main():
     
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
-        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX-3 🎁 (Raffle Draw)" # แก้ไขเพื่อกระตุ้น Redeploy
+        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX-4 🎁 (Raffle Draw)" 
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         st.markdown("**ไฟล์ข้อมูล:**")
@@ -193,19 +193,6 @@ def main():
             background-color: #4beaff !important;
             color: #0e1117 !important;
         }}
-        /* กำหนดสไตล์ปุ่ม st.link_button (Summary) */
-        /* st.link_button จะถูกจัดสไตล์เป็นปุ่มรอง (secondary) โดยค่าเริ่มต้น */
-        .stButton>button[key="summary_link_btn"] {{ 
-            background-color: #4beaff;
-            color: #0e1117;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 1.4em;
-            font-weight: bold;
-            width: 100%;
-            cursor: pointer;
-            border: none;
-        }}
         h1 {{
             color: #4beaff; 
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -227,6 +214,7 @@ def main():
         st.session_state.draw_history = [] 
         st.session_state.selected_group = None 
     
+    # แก้ไข AttributeError: ตรวจสอบและกำหนดค่าเริ่มต้นเสมอ
     if 'draw_history' not in st.session_state:
          st.session_state.draw_history = [] 
 
@@ -335,7 +323,7 @@ def main():
     st.markdown("---")
     
     # ----------------------------------------------------
-    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (แก้ไขให้เปิดในแท็บใหม่ด้วย st.link_button)
+    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (ใช้ HTML เพื่อเลี่ยง TypeError และลองเปิด New Tab)
     # ----------------------------------------------------
     if st.session_state.draw_history: 
         st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
@@ -346,20 +334,29 @@ def main():
         col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
 
         with col_btn_center:
-            # *** แก้ไข: ลบ type="primary" ออกจาก st.link_button เพื่อแก้ TypeError ***
-            # st.link_button รองรับการเปิดแท็บใหม่โดยค่าเริ่มต้น
-            st.link_button(
-                label="🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)",
-                url=FULL_SUMMARY_URL,
-                help="คลิกเพื่อเปิดหน้าสรุปผลรางวัลในแท็บใหม่",
-                use_container_width=True,
-                key="summary_link_btn" 
-            )
+            # *** ใช้โค้ด HTML กลับคืนมาเพื่อหลีกเลี่ยง TypeError จาก st.link_button ***
+            st.markdown(f"""
+            <a href="{FULL_SUMMARY_URL}" target="_blank">
+                <button style='
+                    background-color: #4beaff;
+                    color: #0e1117;
+                    border-radius: 8px;
+                    padding: 10px 20px;
+                    font-size: 1.4em;
+                    font-weight: bold;
+                    width: 100%;
+                    cursor: pointer;
+                    border: none;
+                '>
+                🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)
+                </button>
+            </a>
+            """, unsafe_allow_html=True)
             
     st.markdown("---")
 
 if __name__ == '__main__':
-    # *** แก้ไข AttributeError: กำหนดค่าเริ่มต้น draw_history ก่อนเรียก main() ***
+    # แก้ไข AttributeError: ตรวจสอบและกำหนดค่า draw_history ที่นี่อีกครั้งก่อนเรียก main()
     if 'draw_history' not in st.session_state:
          st.session_state.draw_history = [] 
          
