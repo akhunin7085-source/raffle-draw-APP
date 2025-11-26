@@ -7,23 +7,52 @@ from datetime import datetime
 import os
 import base64 
 import qrcode 
+import json # **ใหม่: สำหรับจัดการไฟล์ JSON**
 
-# --- ฟังก์ชันโหลดข้อมูล (เดิม) ---
+# ชื่อไฟล์สำหรับเก็บประวัติถาวร (ใช้ร่วมกัน 2 หน้า)
+HISTORY_FILE = 'draw_history.json' 
+
+# --- ฟังก์ชันบันทึกประวัติลงไฟล์ JSON ---
+def save_history_to_file(history_data):
+    try:
+        # บันทึกข้อมูลประวัติ (เป็น List of Dicts) ลงในไฟล์ JSON
+        with open(HISTORY_FILE, 'w', encoding='utf-8') as f:
+            json.dump(history_data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        # ใน Streamlit Cloud ถ้าเกิด Error ตรงนี้ อาจจะเกี่ยวข้องกับสิทธิ์การเข้าถึงโฟลเดอร์
+        st.error(f"❌ บันทึกไฟล์ประวัติไม่สำเร็จ: {e}") 
+
+# --- ฟังก์ชันโหลดประวัติจากไฟล์ JSON ---
+def load_history_from_file():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, 'r', encoding='utf-8') as f:
+                # ตรวจสอบว่าไฟล์ว่างหรือไม่
+                content = f.read()
+                if not content:
+                    return []
+                f.seek(0) # กลับไปอ่านใหม่
+                return json.load(f)
+        except json.JSONDecodeError:
+            return []
+        except Exception:
+            return []
+    return []
+
+# --- ฟังก์ชันโหลดข้อมูล (จัดการ Error และแปลงชนิดข้อมูล) ---
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     
     employee_data = pd.DataFrame()
     prize_data = pd.DataFrame()
     
-    # ... (เนื้อหาของฟังก์ชัน load_data เหมือนเดิม)
     if not os.path.exists(emp_file) or not os.path.exists(prize_file):
-        st.error(f"⚠️ ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ '{emp_file}' และ '{priz_file}' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
+        st.error(f"⚠️ ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ '{emp_file}' และ '{prize_file}' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
         return pd.DataFrame(), pd.DataFrame()
         
     st.info(f"กำลังโหลดข้อมูลจากไฟล์: {emp_file} และ {prize_file}...")
     
     try:
-        # ตรวจสอบว่าไฟล์เป็น CSV หรือ Excel
         if emp_file.endswith(('.csv', '.CSV')):
              employee_data = pd.read_csv(emp_file)
         else:
@@ -72,7 +101,7 @@ def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     st.success("✅ โหลดข้อมูลสำเร็จแล้ว! พร้อมเริ่มจับรางวัล")
     return employee_data, prize_data 
 
-# --- ฟังก์ชันหลักในการสุ่ม (เหมือนเดิม) ---
+# --- ฟังก์ชันหลักในการสุ่ม ---
 def run_draw(group, emp_df, prize_df):
     
     group_clean = str(group).strip()
@@ -97,13 +126,30 @@ def run_draw(group, emp_df, prize_df):
     results = list(zip(selected_employees, selected_prizes))
     return results
 
-# --- ฟังก์ชันที่เหลือ (ไม่จำเป็นต้องใช้ในหน้านี้แล้ว) ---
+
+# --- ฟังก์ชันแปลงไฟล์ภาพพื้นหลังให้เป็น Base64 สำหรับ CSS Background ---
+def get_base64_image(image_file):
+    try:
+        with open(image_file, "rb") as f:
+            data = base64.b64encode(f.read()).decode("utf-8")
+        if image_file.lower().endswith(('.png')):
+            mime_type = 'image/png'
+        elif image_file.lower().endswith(('.jpg', '.jpeg')):
+            mime_type = 'image/jpeg'
+        else:
+            mime_type = 'image/jpg' 
+            
+        return f"data:{mime_type};base64,{data}"
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        return None
 
 # --- Main Program (Streamlit UI) ---
 def main():
     
     # ----------------------------------------------------
-    # 1. การตั้งค่าหน้าจอและ CSS Global (เหมือนเดิม)
+    # 1. การตั้งค่าหน้าจอและ CSS Global
     # ----------------------------------------------------
     st.set_page_config(
         layout="wide",
@@ -111,7 +157,6 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # ... (โค้ด CSS และ Sidebar เหมือนเดิม)
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
         
@@ -131,24 +176,6 @@ def main():
 
 
     BACKGROUND_IMAGE_FILE = 'background.jpg'  
-    
-    def get_base64_image(image_file):
-        try:
-            with open(image_file, "rb") as f:
-                data = base64.b64encode(f.read()).decode("utf-8")
-            if image_file.lower().endswith(('.png')):
-                mime_type = 'image/png'
-            elif image_file.lower().endswith(('.jpg', '.jpeg')):
-                mime_type = 'image/jpeg'
-            else:
-                mime_type = 'image/jpg' 
-                
-            return f"data:{mime_type};base64,{data}"
-        except FileNotFoundError:
-            return None
-        except Exception as e:
-            return None
-            
     base64_bg = get_base64_image(BACKGROUND_IMAGE_FILE)
 
     if base64_bg:
@@ -240,18 +267,20 @@ def main():
         """, unsafe_allow_html=True)
     
     # ----------------------------------------------------
-    # 2. แสดงผล Title/Header (เหมือนเดิม)
+    # 2. แสดงผล Title/Header 
     # ----------------------------------------------------
     st.title(custom_title)
-    
     st.markdown("---")
 
-    # โหลดและเก็บข้อมูลใน Session State (เหมือนเดิม)
+    # โหลดและเก็บข้อมูลใน Session State (โหลดประวัติจากไฟล์ JSON)
     if 'emp_df' not in st.session_state:
         emp_df, prize_df = load_data() 
         st.session_state.emp_df = emp_df
         st.session_state.prize_df = prize_df
-        st.session_state.draw_history = [] 
+        
+        # *** เปลี่ยนมาโหลดประวัติจากไฟล์แทน ***
+        st.session_state.draw_history = load_history_from_file() 
+        
         st.session_state.current_group_results = [] 
         st.session_state.current_group_name = ""
         st.session_state.selected_group = None 
@@ -265,7 +294,7 @@ def main():
     groups = sorted(list(set(groups))) 
     
     # ----------------------------------------------------
-    # 3. ส่วนเลือกกลุ่ม (เหมือนเดิม)
+    # 3. ส่วนเลือกกลุ่ม
     # ----------------------------------------------------
     st.markdown("## เลือกกลุ่มจับรางวัล:")
     
@@ -286,7 +315,7 @@ def main():
     st.markdown("---")
     
     # ----------------------------------------------------
-    # 4. ปุ่มสุ่มหลักและแสดงผล (ปรับปรุง)
+    # 4. ปุ่มสุ่มหลักและแสดงผล
     # ----------------------------------------------------
     if st.session_state.selected_group:
         selected_group = st.session_state.selected_group
@@ -352,11 +381,16 @@ def main():
                             st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
                         
                         result_item = (winner_name, winner_dept, prize)
-                        # บันทึกในประวัติรวม
-                        st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
+                        
+                        # ดึงประวัติปัจจุบันที่โหลดจากไฟล์มาเพิ่ม (เพื่อให้บันทึกไฟล์ได้ถูกต้อง)
+                        history_from_file = load_history_from_file()
+                        history_from_file.append({'ชื่อ-นามสกุล': winner_name, 
                                                               'แผนก': winner_dept, 
                                                               'รายการของขวัญ': prize})
-                        # บันทึกในผลล่าสุด
+                        # อัปเดต session state
+                        st.session_state.draw_history = history_from_file 
+                        
+                        # บันทึกในผลล่าสุด (แสดงผลชั่วคราว)
                         st.session_state.current_group_results.append(result_item) 
                         
                         time.sleep(3.0) 
@@ -370,9 +404,17 @@ def main():
                         st.balloons()
                         
                     st.success("✨🎉 **จบการสุ่มรางวัลกลุ่มนี้แล้ว!**")
+                    
+                    # *** โค้ดสำคัญ: บันทึกประวัติลงไฟล์ JSON ทันทีที่สุ่มเสร็จ ***
+                    if st.session_state.draw_history:
+                        save_history_to_file(st.session_state.draw_history)
+                        
                     time.sleep(1.0)
-                    st.rerun() # Re-run เพื่อแสดงผลรวมถาวร
-
+                    st.rerun() 
+        
+    else:
+         st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
+    
     st.markdown("---")
 
 
@@ -382,7 +424,7 @@ def main():
     if st.session_state.draw_history:
         st.subheader("🎉 ตรวจสอบผลรางวัลรวมทั้งหมด")
         
-        # **สำคัญ: อัปเดต URL นี้** (Streamlit สร้าง URL สำหรับไฟล์ summary_page.py เป็น /summary_page)
+        # **สำคัญ: อัปเดต URL นี้** # ต้องแน่ใจว่า Streamlit Cloud Deploy ไฟล์ summary_page.py แล้ว (จะเป็น /summary_page)
         SUMMARY_APP_URL = "https://raffle-draw-app-lertwasin.streamlit.app/summary_page" 
         
         col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
