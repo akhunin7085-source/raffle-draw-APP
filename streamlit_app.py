@@ -18,6 +18,26 @@ PAGES = {
     "สุ่มรางวัลหลัก": "streamlit_app.py",
     "สรุปผลรางวัล": "pages/1_Summary.py"
 } 
+HISTORY_FILE = 'draw_history.csv' # กำหนดชื่อไฟล์ประวัติ
+
+# ----------------------------------------------------
+# *** ฟังก์ชันผู้ช่วย: save_history (New) ***
+# ----------------------------------------------------
+def save_history(history_list):
+    """บันทึกประวัติผลสุ่มลงในไฟล์ CSV อย่างถาวร"""
+    if not history_list:
+        df_history = pd.DataFrame(columns=['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ'])
+    else:
+        df_history = pd.DataFrame(history_list)
+        
+    try:
+        # ใช้ to_csv เพื่อบันทึก/เขียนทับไฟล์
+        # encoding='utf_8_sig' ช่วยให้ภาษาไทยใน Excel แสดงผลถูกต้อง
+        df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig') 
+    except Exception as e:
+        # ใน Streamlit Cloud อาจมีข้อจำกัดด้านการเขียนไฟล์
+        print(f"ERROR: ไม่สามารถบันทึกประวัติผลสุ่มลงในไฟล์ได้: {e}") 
+
 
 # ----------------------------------------------------
 # *** ฟังก์ชันผู้ช่วย: load_data ***
@@ -105,7 +125,6 @@ def get_base64_image(image_file):
 # ----------------------------------------------------
 def main():
     
-    # ตรวจสอบว่า Streamlit รองรับ st.switch_page หรือไม่ (ควรจะรองรับใน Streamlit เวอร์ชันใหม่)
     if 'switch_page' not in dir(st):
         st.error("เวอร์ชัน Streamlit ปัจจุบันไม่รองรับ 'st.switch_page()' โปรดอัปเดตหรือเปลี่ยนไปใช้ Python 3.9+.")
         return
@@ -122,7 +141,6 @@ def main():
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         
-        # *** NEW CODE: Slider ควบคุมความเร็ว ***
         st.markdown("### ⏱️ ควบคุมระยะเวลาแสดงผล")
         default_speed = st.session_state.get('announcement_speed', 3.0)
         speed_control = st.slider(
@@ -134,11 +152,11 @@ def main():
             key='announcement_speed' 
         )
         st.markdown("---")
-        # *** END NEW CODE ***
         
         st.markdown("**ไฟล์ข้อมูล:**")
         st.markdown("* `employees.csv`")
         st.markdown("* `prizes.csv`")
+        st.markdown("* `draw_history.csv` (ไฟล์ประวัติผลสุ่ม)")
         st.markdown("* `background.jpg`")
         st.markdown("---")
 
@@ -234,7 +252,6 @@ def main():
         st.session_state.draw_history = [] 
         st.session_state.selected_group = None 
     
-    # แก้ไข AttributeError: ตรวจสอบและกำหนดค่าเริ่มต้นเสมอ
     if 'draw_history' not in st.session_state:
          st.session_state.draw_history = [] 
 
@@ -283,8 +300,7 @@ def main():
                 
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
-                # กำหนดความเร็วจาก Slider
-                ROLLING_DURATION = 0.5 # เวลาแสดงผลการหมุนคงที่ 0.5 วินาที
+                ROLLING_DURATION = 0.5 
                 ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 3.0)
                 
                 if draw_results:
@@ -319,7 +335,7 @@ def main():
                             st.markdown(winner_message, unsafe_allow_html=True)
                             st.markdown("---")
                             
-                        # C. อัปเดตสถานะและเก็บประวัติ (ใช้ st.session_state)
+                        # C. อัปเดตสถานะ (ใน Session State)
                         idx_emp = st.session_state.emp_df.index[st.session_state.emp_df['ชื่อ-นามสกุล'] == winner_name].tolist()
                         if idx_emp:
                             st.session_state.emp_df.loc[idx_emp[0], 'สถานะ'] = 'ได้รับแล้ว'
@@ -329,19 +345,19 @@ def main():
                             current_qty = st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ']
                             st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
                         
-                        st.session_state.draw_history.append({'ชื่อ-นามสกุล': winner_name, 
-                                                              'แผนก': winner_dept, 
-                                                              'รายการของขวัญ': prize})
+                        # D. เก็บประวัติลงใน Session State และบันทึกลงไฟล์ (NEW)
+                        new_record = {'ชื่อ-นามสกุล': winner_name, 'แผนก': winner_dept, 'รายการของขวัญ': prize}
+                        st.session_state.draw_history.append(new_record)
+                        save_history(st.session_state.draw_history) # บันทึกลง draw_history.csv
                         
-                        time.sleep(ANNOUNCEMENT_DURATION) # ใช้ค่าจาก Slider ที่ผู้ใช้กำหนด
+                        time.sleep(ANNOUNCEMENT_DURATION) 
                         
                     st.empty() 
                     st.balloons()
                     
                     st.success("🎉 จบการสุ่มรางวัลกลุ่มนี้แล้ว! กำลังนำไปยังหน้าสรุปผล...")
-                    time.sleep(1.0) # หน่วงเวลา 1 วินาที ให้ผู้ใช้เห็นข้อความ
+                    time.sleep(1.0) 
                     
-                    # สั่งเปลี่ยนไปหน้า Summary โดยตรง
                     st.switch_page("pages/1_Summary.py") 
                     
         
@@ -351,7 +367,6 @@ def main():
     st.markdown("---")
     
 if __name__ == '__main__':
-    # แก้ไข AttributeError: ตรวจสอบและกำหนดค่า draw_history ที่นี่อีกครั้งก่อนเรียก main()
     if 'draw_history' not in st.session_state:
          st.session_state.draw_history = [] 
          
