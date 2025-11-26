@@ -20,7 +20,7 @@ PAGES = {
 } 
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: load_data (แก้ไข NameError) ***
+# *** ฟังก์ชันผู้ช่วย: load_data ***
 # ----------------------------------------------------
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
@@ -105,6 +105,11 @@ def get_base64_image(image_file):
 # ----------------------------------------------------
 def main():
     
+    # ตรวจสอบว่า Streamlit รองรับ st.switch_page หรือไม่ (ควรจะรองรับใน Streamlit เวอร์ชันใหม่)
+    if 'switch_page' not in dir(st):
+        st.error("เวอร์ชัน Streamlit ปัจจุบันไม่รองรับ 'st.switch_page()' โปรดอัปเดตหรือเปลี่ยนไปใช้ Python 3.9+.")
+        return
+        
     st.set_page_config(
         layout="wide",
         page_title="สุ่มจับรางวัลปีใหม่ 2568", 
@@ -113,9 +118,24 @@ def main():
     
     with st.sidebar:
         st.header("⚙️ ตั้งค่าโปรแกรม")
-        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX-4 🎁 (Raffle Draw)" 
+        default_title = "🎉 สุ่มจับรางวัลของขวัญปีใหม่ 2568 V.FINAL-FIX-6 🎁 (Raffle Draw)" 
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
+        
+        # *** NEW CODE: Slider ควบคุมความเร็ว ***
+        st.markdown("### ⏱️ ควบคุมระยะเวลาแสดงผล")
+        default_speed = st.session_state.get('announcement_speed', 3.0)
+        speed_control = st.slider(
+            "ระยะเวลาแสดงผลผู้โชคดี (วินาที)",
+            min_value=1.0,
+            max_value=10.0,
+            value=default_speed,
+            step=0.5,
+            key='announcement_speed' 
+        )
+        st.markdown("---")
+        # *** END NEW CODE ***
+        
         st.markdown("**ไฟล์ข้อมูล:**")
         st.markdown("* `employees.csv`")
         st.markdown("* `prizes.csv`")
@@ -249,7 +269,7 @@ def main():
     st.markdown("---")
     
     # ----------------------------------------------------
-    # 4. ปุ่มสุ่มหลักและแสดงผล
+    # 4. ปุ่มสุ่มหลักและแสดงผล (พร้อมเปลี่ยนหน้าอัตโนมัติ)
     # ----------------------------------------------------
     if st.session_state.selected_group:
         selected_group = st.session_state.selected_group
@@ -262,6 +282,10 @@ def main():
             if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม: **{selected_group}**", key="main_draw_btn", use_container_width=True):
                 
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
+                
+                # กำหนดความเร็วจาก Slider
+                ROLLING_DURATION = 0.5 # เวลาแสดงผลการหมุนคงที่ 0.5 วินาที
+                ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 3.0)
                 
                 if draw_results:
                     st.subheader(f"เริ่มการสุ่มกลุ่ม **{selected_group}**") 
@@ -281,7 +305,7 @@ def main():
                         # A. Show rolling animation 
                         with current_winner_box.container():
                             st.markdown(f"## กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**...") 
-                        time.sleep(0.5)
+                        time.sleep(ROLLING_DURATION) 
                         
                         # B. Announce Winner
                         with current_winner_box.container():
@@ -309,12 +333,16 @@ def main():
                                                               'แผนก': winner_dept, 
                                                               'รายการของขวัญ': prize})
                         
-                        time.sleep(3.0) 
+                        time.sleep(ANNOUNCEMENT_DURATION) # ใช้ค่าจาก Slider ที่ผู้ใช้กำหนด
                         
                     st.empty() 
                     st.balloons()
-                    st.success("🎉 จบการสุ่มรางวัลกลุ่มนี้แล้ว!")
-                    time.sleep(1.0)
+                    
+                    st.success("🎉 จบการสุ่มรางวัลกลุ่มนี้แล้ว! กำลังนำไปยังหน้าสรุปผล...")
+                    time.sleep(1.0) # หน่วงเวลา 1 วินาที ให้ผู้ใช้เห็นข้อความ
+                    
+                    # สั่งเปลี่ยนไปหน้า Summary โดยตรง
+                    st.switch_page("pages/1_Summary.py") 
                     
         
     else:
@@ -322,39 +350,6 @@ def main():
          
     st.markdown("---")
     
-    # ----------------------------------------------------
-    # 5. ส่วนแสดงปุ่มลิงก์ไปหน้าสรุปผลรวม (ใช้ HTML เพื่อเลี่ยง TypeError และลองเปิด New Tab)
-    # ----------------------------------------------------
-    if st.session_state.draw_history: 
-        st.subheader("ตรวจสอบผลรางวัลรวมทั้งหมด")
-        
-        # Path ที่ Streamlit ควรอ่านได้
-        FULL_SUMMARY_URL = "/1_Summary" 
-        
-        col_btn_left, col_btn_center, col_btn_right = st.columns([1, 2, 1])
-
-        with col_btn_center:
-            # *** ใช้โค้ด HTML กลับคืนมาเพื่อหลีกเลี่ยง TypeError จาก st.link_button ***
-            st.markdown(f"""
-            <a href="{FULL_SUMMARY_URL}" target="_blank">
-                <button style='
-                    background-color: #4beaff;
-                    color: #0e1117;
-                    border-radius: 8px;
-                    padding: 10px 20px;
-                    font-size: 1.4em;
-                    font-weight: bold;
-                    width: 100%;
-                    cursor: pointer;
-                    border: none;
-                '>
-                🏆 เปิดหน้าสรุปผลรางวัลทั้งหมด (New Tab)
-                </button>
-            </a>
-            """, unsafe_allow_html=True)
-            
-    st.markdown("---")
-
 if __name__ == '__main__':
     # แก้ไข AttributeError: ตรวจสอบและกำหนดค่า draw_history ที่นี่อีกครั้งก่อนเรียก main()
     if 'draw_history' not in st.session_state:
