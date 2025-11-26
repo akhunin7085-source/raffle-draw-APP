@@ -5,6 +5,12 @@ import base64
 import io
 import urllib.parse
 from datetime import datetime
+import os
+
+# ----------------------------------------------------
+# กำหนดชื่อไฟล์ประวัติ (ต้องตรงกับไฟล์หลัก)
+# ----------------------------------------------------
+HISTORY_FILE = 'draw_history.csv' 
 
 # ----------------------------------------------------
 # ฟังก์ชันสร้าง QR Code
@@ -33,6 +39,7 @@ def generate_qr_code(url):
 # ----------------------------------------------------
 def to_excel(df):
     output = io.BytesIO()
+    # ใช้ engine='xlsxwriter' และ encoding สำหรับภาษาไทย
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Summary')
     writer.close()
@@ -46,18 +53,26 @@ def main():
     
     st.set_page_config(layout="wide", page_title="สรุปผลรางวัล")
     
-    # ดึงประวัติการสุ่ม
-    draw_history = st.session_state.get('draw_history', [])
-    
     # ----------------------------------------------------
-    # ส่วนตั้งค่า Sidebar สำหรับ URL (New)
+    # ดึงประวัติการสุ่ม (MODIFIED: โหลดจากไฟล์)
+    # ----------------------------------------------------
+    df_summary = pd.DataFrame() # กำหนดค่าเริ่มต้นเป็น DataFrame เปล่า
+    try:
+        if os.path.exists(HISTORY_FILE):
+             # อ่านข้อมูลจากไฟล์ที่ถูกบันทึกไว้
+             df_summary = pd.read_csv(HISTORY_FILE)
+        
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการโหลดประวัติจากไฟล์: {e}")
+        
+    # ----------------------------------------------------
+    # ส่วนตั้งค่า Sidebar สำหรับ URL 
     # ----------------------------------------------------
     with st.sidebar:
         st.header("⚙️ การตั้งค่าหน้าสรุปผล")
         
-        # *** NEW: ให้ผู้ใช้ใส่ Base URL ของแอปพลิเคชัน ***
-        # ตัวอย่าง URL: https://lws-draw-app-final.streamlit.app
-        default_url = "https://[YOUR_APP_NAME].streamlit.app"
+        # URL ของคุณ: https://raffle-draw-app-lertwasin.streamlit.app
+        default_url = "https://raffle-draw-app-lertwasin.streamlit.app" 
         app_base_url = st.text_input(
             "Base URL ของ Streamlit App:",
             value=default_url,
@@ -74,13 +89,8 @@ def main():
     # ----------------------------------------------------
     st.header("🎟️ QR Code สำหรับการตรวจสอบผลรางวัล")
     
-    # ตรวจสอบและสร้าง URL สำหรับ QR Code
-    if app_base_url and "[YOUR_APP_NAME]" not in app_base_url:
-        # URL ของหน้าสรุปผลคือ Base URL + /Summary (หรือ /1_Summary)
-        # เราจะใช้ /Summary ตามที่แสดงใน URL ของรูปที่คุณส่งมา
+    if app_base_url and "raffle-draw-app-lertwasin" in app_base_url:
         summary_page_path = "/Summary" 
-        
-        # ทำให้แน่ใจว่า Base URL ไม่มี / ท้าย และ Path มี / นำหน้า
         base_url_clean = app_base_url.rstrip('/')
         full_summary_url = f"{base_url_clean}{summary_page_path}"
 
@@ -101,11 +111,8 @@ def main():
     # ----------------------------------------------------
     st.header("📋 รายชื่อผู้โชคดี")
     
-    if draw_history:
-        # สร้าง DataFrame จากประวัติการสุ่ม
-        df_summary = pd.DataFrame(draw_history)
-        
-        # จัดเรียงตามรายการของขวัญ หรือตามลำดับที่ได้รับ
+    if not df_summary.empty:
+        # ใช้ df_summary ที่โหลดมาจากไฟล์โดยตรง
         st.dataframe(df_summary, use_container_width=True)
         
         st.markdown("---")
@@ -129,7 +136,4 @@ def main():
         st.info("ยังไม่มีข้อมูลการสุ่มรางวัล")
 
 if __name__ == '__main__':
-    # ตรวจสอบการเริ่มต้นของ session_state
-    if 'draw_history' not in st.session_state:
-         st.session_state.draw_history = []
     main()
