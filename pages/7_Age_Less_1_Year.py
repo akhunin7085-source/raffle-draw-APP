@@ -1,141 +1,125 @@
 import streamlit as st
 import pandas as pd
-import io
-from datetime import datetime
 import os
-import qrcode
-import base64
-
-# ----------------------------------------------------
-# *** ต้องเปลี่ยนค่านี้สำหรับแต่ละไฟล์ ให้ตรงกับชื่อกลุ่มใน CSV ***
-# ----------------------------------------------------
-GROUP_NAME = "อายุงานไม่ถึง 1 ปี" 
 
 # ----------------------------------------------------
 # --- CONFIGURATION ---
 # ----------------------------------------------------
-HISTORY_FILE = 'draw_history.csv' 
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
+HISTORY_FILE = 'draw_history.csv'
 
-
+# *** สำคัญมาก: เปลี่ยนค่านี้ให้ตรงกับชื่อกลุ่มในไฟล์ CSV ของคุณ ***
+GROUP_NAME = "อายุงานไม่ถึง 1 ปี" # <--- ตัวอย่าง: ต้องเปลี่ยนให้ตรงกับชื่อกลุ่ม
 # ----------------------------------------------------
-# --- FUNCTIONS ---
-# ----------------------------------------------------
-def generate_qr_code(url):
-    """Generate base64 encoded QR Code image from URL."""
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
-    return f"data:image/png;base64,{img_str}"
 
-# ----------------------------------------------------
-# --- Main Program (Group Page) ---
-# ----------------------------------------------------
-def main():
-    
-    st.set_page_config(layout="wide", page_title=f"ผลรางวัล: {GROUP_NAME}") 
-    
-    # -------------------- โค้ดสร้าง URL Path --------------------
-    try:
-        page_name_full = os.path.basename(__file__).replace('.py', '') 
-        page_name_parts = page_name_full.split('_', 1)
-        if len(page_name_parts) > 1:
-            page_name = page_name_parts[1]
-        else:
-            page_name = page_name_full
-            
-    except Exception:
-        page_name = "Summary" 
-    
-    group_url = f"{APP_BASE_URL}/{page_name}"
-    
-    # -------------------- Sidebar: QR Code (ซ่อนที่นี่) --------------------
-    with st.sidebar:
-        st.header(f"🎟️ QR Code สำหรับกลุ่ม: {GROUP_NAME}")
-        st.image(generate_qr_code(group_url), caption=f"สแกนเพื่อดูผลรางวัล: {GROUP_NAME}", use_column_width="always")
-        st.markdown(f"**ลิงก์:** `{group_url}`")
-        st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
-        
-
-    # -------------------- CSS Styles --------------------
-    st.markdown(f"""
-        <style>
-        .winner-card {{
-            background-color: #1e2124; 
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-            height: 100%; 
-            border-left: 5px solid #ff9900; 
-        }}
-        .card-title {{
-            color: #ff9900; 
-            font-size: 1.5em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
-        .card-prize {{
-            color: #ffeb3b; 
-            font-size: 1.2em;
-            font-weight: bold;
-        }}
-        .card-detail {{
-            color: #c9c9c9;
-            font-size: 1em;
-        }}
-        </style>
-        """, unsafe_allow_html=True)
-    
-    # -------------------- Load and Filter Data --------------------
-    df_summary = pd.DataFrame() 
-    try:
-        if os.path.exists(HISTORY_FILE):
-             df_summary_all = pd.read_csv(HISTORY_FILE)
-             
-             # *** กรองข้อมูลตาม GROUP_NAME ที่กำหนดไว้ ***
-             if 'กลุ่มจับรางวัล' in df_summary_all.columns:
-                 df_summary = df_summary_all[df_summary_all['กลุ่มจับรางวัล'].astype(str).str.strip() == GROUP_NAME]
-             
-             if not df_summary.empty:
-                df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
-    except Exception:
-        pass 
-
-    # -------------------- Header and Body --------------------
-    st.title(f"🎉 ผลรางวัลเฉพาะกลุ่ม: {GROUP_NAME}")
-    st.markdown("---")
-
-    # -------------------- Display Results --------------------
-    st.header(f"📋 รายชื่อผู้โชคดีกลุ่ม {GROUP_NAME}")
-    
-    if not df_summary.empty:
-        NUM_COLUMNS = 2
-        cols = st.columns(NUM_COLUMNS)
-        
-        for index, row in df_summary.iterrows():
-            col_index = index % NUM_COLUMNS 
-            group_name_display = row['กลุ่มจับรางวัล'] if 'กลุ่มจับรางวัล' in row else row['แผนก']
-            
-            card_html = f"""
-            <div class="winner-card">
-                <div class="card-title">🎁 ลำดับที่: {row['ลำดับที่']}</div>
-                <div class="card-prize">🏆 {row['รายการของขวัญ']}</div>
-                <div class="card-detail">👤 ชื่อ: **{row['ชื่อ-นามสกุล']}**</div>
-                <div class="card-detail">🏢 กลุ่ม: **{group_name_display}**</div>
-            </div>
-            """
-            
-            with cols[col_index]:
-                st.markdown(card_html, unsafe_allow_html=True)
-        
+def load_history():
+    """โหลดประวัติผลสุ่มจากไฟล์ CSV"""
+    if os.path.exists(HISTORY_FILE):
+        try:
+            df = pd.read_csv(HISTORY_FILE)
+            required_cols = ['ชื่อ-นามสกุล', 'รายการของขวัญ', 'กลุ่มจับรางวัล', 'แผนก']
+            for col in required_cols:
+                if col not in df.columns:
+                    df[col] = ''
+            return df.fillna('')
+        except Exception as e:
+            st.error(f"ไม่สามารถอ่านไฟล์ประวัติ {HISTORY_FILE} ได้: {e}")
+            return pd.DataFrame()
     else:
-        st.info(f"ยังไม่มีข้อมูลการสุ่มรางวัลสำหรับกลุ่ม **{GROUP_NAME}**")
+        return pd.DataFrame()
 
-if __name__ == '__main__':
-    main()
+# ----------------------------------------------------
+# --- Main Program (Streamlit UI) ---
+# ----------------------------------------------------
+st.set_page_config(
+    layout="wide",
+    page_title=f"สรุปผลรางวัลกลุ่ม {GROUP_NAME}",
+    initial_sidebar_state="collapsed"
+)
 
+# --- CSS Styling for Prize Cards ---
+st.markdown("""
+<style>
+/* Custom CSS for the Prize Card Layout */
+.prize-card {
+    background-color: #1a1a1a; 
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    /* แถบสีฟ้าสำหรับหน้ากลุ่มย่อย (เพื่อให้แตกต่างจาก Summary ที่เป็นสีแดง) */
+    border-left: 5px solid #4beaff; 
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.prize-name {
+    font-size: 2.2em; /* ใหญ่ที่สุด: รางวัล */
+    font-weight: bold;
+    color: #ffd700; /* สีทองสำหรับรางวัล */
+    margin-bottom: 5px;
+}
+.winner-name {
+    font-size: 1.5em; /* ตัวใหญ่ขึ้น: ชื่อผู้โชคดี */
+    font-weight: bold;
+    color: #4beaff; /* สีฟ้าสำหรับชื่อ */
+    margin-top: 5px;
+}
+.group-info {
+    font-size: 1.0em; /* ขนาดเดิม: กลุ่มอายุงาน/แผนก */
+    color: #cccccc;
+    margin-top: 5px;
+}
+.card-icon {
+    font-size: 1.5em;
+    margin-right: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+st.title(f"🎉 ผู้โชคดีกลุ่ม: **{GROUP_NAME}** 🎁")
+st.markdown("---")
+
+df_history = load_history()
+
+if df_history.empty:
+    st.warning("ยังไม่มีข้อมูลการสุ่มรางวัล กรุณาตรวจสอบว่ามีไฟล์ draw_history.csv หรือยังไม่ได้เริ่มสุ่ม")
+else:
+    # กรองข้อมูลเฉพาะกลุ่มที่ต้องการ
+    df_group = df_history[df_history['กลุ่มจับรางวัล'] == GROUP_NAME].copy()
+    
+    if df_group.empty:
+        st.info(f"ยังไม่มีผู้โชคดีสำหรับกลุ่ม **{GROUP_NAME}**")
+    else:
+        st.header(f"📋 รายชื่อผู้โชคดีกลุ่ม **{GROUP_NAME}** ({len(df_group)} รายการ)")
+        
+        # จัดเรียงตามชื่อของรางวัล
+        df_display = df_group.sort_values(by='รายการของขวัญ').reset_index(drop=True)
+        
+        # สร้าง Grid View (2 คอลัมน์)
+        num_rows = len(df_display)
+        cols = st.columns(2)
+        
+        for i in range(num_rows):
+            row = df_display.iloc[i]
+            
+            with cols[i % 2]:
+                
+                # --- สร้าง HTML สำหรับ Prize Card ---
+                html_content = f"""
+                <div class="prize-card">
+                    <div>
+                        <span class="prize-name">🎁 {row['รายการของขวัญ']}</span>
+                    </div>
+                    <div>
+                        <span class="winner-name">👤 ชื่อ: {row['ชื่อ-นามสกุล']}</span><br>
+                        <span class="group-info">🏢 แผนก: {row.get('แผนก', 'N/A')}</span><br>
+                        <span class="group-info">👥 กลุ่ม: {row['กลุ่มจับรางวัล']}</span>
+                    </div>
+                </div>
+                """
+                st.markdown(html_content, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        # ไม่มีส่วนตารางสรุป และไม่มีปุ่มดาวน์โหลด
