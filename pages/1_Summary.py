@@ -7,15 +7,16 @@ import qrcode
 import base64
 
 # ----------------------------------------------------
-# กำหนดชื่อไฟล์ประวัติ
+# --- CONFIGURATION ---
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv' 
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" 
+APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
 
 # ----------------------------------------------------
-# ฟังก์ชันดาวน์โหลด Excel
+# --- FUNCTIONS ---
 # ----------------------------------------------------
 def to_excel(df):
+    """Convert DataFrame to Excel format for download."""
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Summary')
@@ -23,10 +24,8 @@ def to_excel(df):
     processed_data = output.getvalue()
     return processed_data
 
-# ----------------------------------------------------
-# ฟังก์ชันสร้าง QR Code สำหรับหน้าหลัก
-# ----------------------------------------------------
 def generate_qr_code(url):
+    """Generate base64 encoded QR Code image from URL."""
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
     qr.add_data(url)
     qr.make(fit=True)
@@ -36,7 +35,6 @@ def generate_qr_code(url):
     img_str = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/png;base64,{img_str}"
 
-
 # ----------------------------------------------------
 # --- Main Program (Summary Page) ---
 # ----------------------------------------------------
@@ -44,7 +42,17 @@ def main():
     
     st.set_page_config(layout="wide", page_title="สรุปผลรางวัลรวม")
     
-    # -------------------- CSS Styles (เหมือนเดิม) --------------------
+    # -------------------- Sidebar: QR Code --------------------
+    # QR Code สำหรับหน้าผลรวม (ใช้ URL ของหน้า summary/1_Summary)
+    full_summary_url = f"{APP_BASE_URL}/Summary" 
+    
+    with st.sidebar:
+        st.header("🎟️ QR Code สำหรับหน้าสรุปผลรวม")
+        st.image(generate_qr_code(full_summary_url), caption="สแกนเพื่อดูผลรางวัลรวม", use_column_width="always")
+        st.markdown(f"**ลิงก์:** `{full_summary_url}`")
+        st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
+    
+    # -------------------- CSS Styles --------------------
     st.markdown(f"""
         <style>
         .winner-card {{
@@ -82,23 +90,11 @@ def main():
              if not df_summary.empty:
                 df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
     except Exception:
-        pass # ปล่อยให้ df_summary เป็น DataFrame ว่าง
+        pass 
         
-    # -------------------- Header and QR Code (Only for ALL results) --------------------
+    # -------------------- Header and Body --------------------
     st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
     st.markdown("---")
-
-    # QR Code สำหรับหน้าผลรวม
-    full_summary_url = f"{APP_BASE_URL}/Summary"
-    st.header("🎟️ QR Code สำหรับผลรางวัลรวมทั้งหมด")
-    
-    col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
-    with col_qr_center:
-        st.image(generate_qr_code(full_summary_url), caption="สแกนเพื่อดูผลรางวัลรวม", use_column_width="auto")
-    
-    st.info(f"ลิงก์ QR Code: {full_summary_url}")
-    st.markdown("---")
-
 
     # -------------------- Display Results --------------------
     st.header("📋 รายชื่อผู้โชคดีทั้งหมด")
