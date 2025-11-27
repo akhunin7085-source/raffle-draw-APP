@@ -188,7 +188,7 @@ def main():
 
     
     with st.sidebar:
-        st.header("⚙️ ตั้งค่าโปรแกรมและข้อมูล")
+        st.header("⚙️ ตั้งค่าข้อมูล")
         default_title = "🎉 สุ่มขวัญปีใหม่ 2568 🎁" 
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
@@ -270,7 +270,7 @@ def main():
                 
         
         # ใช้ปุ่มเดียวในการประมวลผลไฟล์ที่อัปโหลด
-        if st.button("ประมวลผลและโหลดข้อมูลใหม่", key='upload_reload_btn', type="primary"):
+        if st.button("ประมวลผล", key='upload_reload_btn', type="primary"):
             
             uploaded_count = 0
             
@@ -517,9 +517,9 @@ def main():
                         with current_winner_box.container():
                             winner_message = f"""
                             <div class='success-box'>
-                                <span style='font-size: 1.5em; font-weight: normal;'>🎊 ผู้โชคดีคนล่าสุดคือ:</span><br>
-                                <span style='font-size: 1.8em; color: #ffeb3b;'>**{winner_name}**</span><br>
-                                <span style='font-size: 1.2em; color: #ffffff;'> (ได้รับ: {prize}) </span>
+                                <span style='font-size: 1.0em; font-weight: normal;'>🎊 ผู้โชคดีคนล่าสุดคือ:</span><br>
+                                <span style='font-size: 0.8em; color: #ffeb3b;'>**{winner_name}**</span><br>
+                                <span style='font-size: 0.6em; color: #ffffff;'> (ได้รับ: {prize}) </span>
                             </div>
                             """
                             st.markdown(winner_message, unsafe_allow_html=True)
@@ -584,5 +584,6 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
