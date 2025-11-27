@@ -2,17 +2,15 @@ import streamlit as st
 import pandas as pd
 import os
 import io 
-import qrcode          # <--- เพิ่ม: ไลบรารีสำหรับ QR Code
-import base64          # <--- เพิ่ม: ไลบรารีสำหรับเข้ารหัสรูปภาพ
+# ลบ: import qrcode
+# ลบ: import base64
 
 # ----------------------------------------------------
 # --- CONFIGURATION & FILE PATHS ---
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv'
 
-# *** สำคัญ: ต้องเปลี่ยนค่านี้เป็น URL หลักของแอปพลิเคชันของคุณ ***
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app/Summary" 
-# ตัวอย่าง: "https://your-app-name.streamlit.app"
+# *** ลบ: APP_BASE_URL ออกแล้ว ***
 # ----------------------------------------------------
 
 # ----------------------------------------------------
@@ -48,49 +46,14 @@ def to_excel_bytes(df):
     return processed_data
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: generate_qr_code ***
+# *** ลบ: ฟังก์ชัน generate_qr_code ออกแล้ว ***
 # ----------------------------------------------------
-def generate_qr_code(url):
-    """สร้าง QR Code จาก URL และคืนค่าเป็น Base64 String สำหรับการแสดงผล"""
-    try:
-        qr = qrcode.QRCode(
-            version=1,
-            error_correction=qrcode.constants.ERROR_CORRECT_L,
-            box_size=10,
-            border=4,
-        )
-        qr.add_data(url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white").convert('RGB')
-        
-        buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-        
-        return f"data:image/png;base64,{img_str}"
-    except Exception:
-        return None
 
 # ----------------------------------------------------
 # --- Main Program (Streamlit UI) ---
 # ----------------------------------------------------
 
-# *** ส่วนแสดงผล QR Code ใน Sidebar ***
-with st.sidebar:
-    st.markdown("---")
-    if APP_BASE_URL != "YOUR_APP_BASE_URL_HERE":
-        qr_base64 = generate_qr_code(APP_BASE_URL)
-        if qr_base64:
-            st.markdown("<div style='text-align:center;'>", unsafe_allow_html=True)
-            st.markdown("### 📱 สแกน QR Code เพื่อเปิดแอป")
-            st.markdown(f'<img src="{qr_base64}" alt="QR Code" style="width:100%; max-width:150px; display:block; margin-left:auto; margin-right:auto;">', unsafe_allow_html=True)
-            st.markdown(f'<small>URL: {APP_BASE_URL}</small>', unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
-        else:
-            st.error("ไม่สามารถสร้าง QR Code ได้")
-    else:
-        st.warning("กรุณาแก้ไข APP_BASE_URL ในโค้ด")
-    st.markdown("---")
+# *** ลบ: ส่วนแสดงผล QR Code ใน Sidebar ออกแล้ว ***
 
 
 st.set_page_config(
