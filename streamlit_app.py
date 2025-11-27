@@ -12,32 +12,25 @@ import urllib.parse
 import numpy as np 
 
 # ----------------------------------------------------
-# *** การตั้งค่า Multi-page App แบบบังคับ ***
+# --- CONFIGURATION & FILE PATHS ---
 # ----------------------------------------------------
-PAGES = {
-    "สุ่มรางวัลหลัก": "streamlit_app.py",
-    "สรุปผลรางวัล": "pages/1_Summary.py"
-} 
-HISTORY_FILE = 'draw_history.csv' # กำหนดชื่อไฟล์ประวัติ
+HISTORY_FILE = 'draw_history.csv'
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: save_history (New) ***
+# *** ฟังก์ชันผู้ช่วย: save_history (แก้ไขแล้ว) ***
 # ----------------------------------------------------
 def save_history(history_list):
-    """บันทึกประวัติผลสุ่มลงในไฟล์ CSV อย่างถาวร"""
+    """บันทึกประวัติผลสุ่มลงในไฟล์ CSV อย่างถาวร พร้อมคอลัมน์ 'กลุ่มจับรางวัล'"""
     if not history_list:
-        df_history = pd.DataFrame(columns=['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ'])
+        # สร้าง DataFrame ว่างพร้อมคอลัมน์ที่จำเป็นสำหรับหน้าแยกกลุ่ม
+        df_history = pd.DataFrame(columns=['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล']) 
     else:
         df_history = pd.DataFrame(history_list)
         
     try:
-        # ใช้ to_csv เพื่อบันทึก/เขียนทับไฟล์
-        # encoding='utf_8_sig' ช่วยให้ภาษาไทยใน Excel แสดงผลถูกต้อง
         df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig') 
     except Exception as e:
-        # ใน Streamlit Cloud อาจมีข้อจำกัดด้านการเขียนไฟล์
         print(f"ERROR: ไม่สามารถบันทึกประวัติผลสุ่มลงในไฟล์ได้: {e}") 
-
 
 # ----------------------------------------------------
 # *** ฟังก์ชันผู้ช่วย: load_data ***
@@ -45,7 +38,7 @@ def save_history(history_list):
 @st.cache_data 
 def load_data(emp_file='employees.csv', prize_file='prizes.csv'):
     employee_data = pd.DataFrame() 
-    prize_data = pd.DataFrame()  
+    prize_data = pd.DataFrame() 
     
     if not os.path.exists('employees.csv') or not os.path.exists('prizes.csv'):
         st.error("ไม่พบไฟล์ข้อมูล: ตรวจสอบว่ามีไฟล์ 'employees.csv' และ 'prizes.csv' อยู่ในโฟลเดอร์เดียวกันหรือไม่")
@@ -161,7 +154,7 @@ def main():
         st.markdown("---")
 
 
-    BACKGROUND_IMAGE_FILE = 'background.jpg'  
+    BACKGROUND_IMAGE_FILE = 'background.jpg' 
     base64_bg = get_base64_image(BACKGROUND_IMAGE_FILE)
 
     if base64_bg:
@@ -256,20 +249,21 @@ def main():
          st.session_state.draw_history = [] 
 
     if st.session_state.emp_df.empty:
-         return 
+          return 
 
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
     groups = sorted(list(set(groups))) 
     
     # ----------------------------------------------------
-    # 3. แสดงผล Title และส่วนเลือกกลุ่ม
+    # 3. แสดงผล Title และส่วนเลือกกลุ่ม (ใช้ปุ่ม)
     # ----------------------------------------------------
     st.title(custom_title)
     st.markdown("---")
     st.markdown("## เลือกกลุ่มจับรางวัล:")
     
     n_groups = len(groups)
+    # เพิ่มคอลัมน์ dummy 2 ด้านซ้ายขวา เพื่อจัดปุ่มให้อยู่ตรงกลาง
     cols_weights = [1] * (n_groups + 2) 
     
     if n_groups > 0:
@@ -346,7 +340,12 @@ def main():
                             st.session_state.prize_df.loc[idx_prize[0], 'จำนวนคงเหลือ'] = current_qty - 1
                         
                         # D. เก็บประวัติลงใน Session State และบันทึกลงไฟล์ (NEW)
-                        new_record = {'ชื่อ-นามสกุล': winner_name, 'แผนก': winner_dept, 'รายการของขวัญ': prize}
+                        new_record = {
+                            'ชื่อ-นามสกุล': winner_name, 
+                            'แผนก': winner_dept, 
+                            'รายการของขวัญ': prize,
+                            'กลุ่มจับรางวัล': selected_group # <-- บันทึกชื่อกลุ่มที่ใช้สุ่ม
+                        }
                         st.session_state.draw_history.append(new_record)
                         save_history(st.session_state.draw_history) # บันทึกลง draw_history.csv
                         
@@ -360,14 +359,14 @@ def main():
                     
                     st.switch_page("pages/1_Summary.py") 
                     
-        
+                
     else:
-         st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
-         
+          st.info("กรุณาเลือกกลุ่มจับรางวัลจากปุ่มด้านบนเพื่อเริ่มสุ่ม")
+          
     st.markdown("---")
     
 if __name__ == '__main__':
     if 'draw_history' not in st.session_state:
-         st.session_state.draw_history = [] 
-         
+          st.session_state.draw_history = [] 
+          
     main()
