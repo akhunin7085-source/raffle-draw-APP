@@ -10,19 +10,24 @@ import qrcode
 import json 
 import urllib.parse 
 import numpy as np 
+import warnings 
+
+# เพื่อป้องกัน UserWarning จาก openpyxl เมื่ออ่านไฟล์ Excel 
+warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
 # ----------------------------------------------------
 # --- CONFIGURATION & FILE PATHS ---
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv'
-EMPLOYEE_FILE = 'employees.csv'
-PRIZE_FILE = 'prizes.csv'
+EMPLOYEE_FILE = 'employees.csv' # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
+PRIZE_FILE = 'prizes.csv'      # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: save_history (ยังคงจำเป็นสำหรับการบันทึกประวัติการสุ่ม) ***
+# --- FUNCTIONS ---
 # ----------------------------------------------------
+
 def save_history(history_list):
-    """บันทึกประวัติผลสุ่มลงในไฟล์ CSV อย่างถาวร พร้อมคอลัมน์ 'กลุ่มจับรางวัล'"""
+    """บันทึกประวัติผลสุ่มลงในไฟล์ CSV อย่างถาวร (เท่าที่ Streamlit Cloud จะอนุญาต)"""
     required_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล'] 
     
     if not history_list:
@@ -34,15 +39,11 @@ def save_history(history_list):
                  df_history[col] = ''
         
     try:
-        # การเขียนไฟล์ประวัติ (draw_history.csv) ยังคงจำเป็นต้องเขียนลงดิสก์ 
-        # แต่อาจไม่เสถียรเท่าการอ่าน/เขียนใน Session State
+        # การเขียนไฟล์ draw_history.csv ยังคงต้องทำ แต่ไม่รับประกันความคงทน
         df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig') 
     except Exception as e:
         print(f"ERROR: ไม่สามารถบันทึกประวัติผลสุ่มลงในไฟล์ได้: {e}") 
 
-# ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: load_data (เปลี่ยนเป็นโหลดไฟล์เริ่มต้นเท่านั้น) ***
-# ----------------------------------------------------
 @st.cache_data(show_spinner=False) 
 def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     """โหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์ (ใช้เฉพาะตอนเริ่มต้นแอปเท่านั้น)"""
@@ -54,25 +55,20 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     # 1. โหลดไฟล์พนักงาน
     if os.path.exists(emp_file):
         try:
-            employee_data = pd.read_csv(emp_file)
+            employee_data = pd.read_csv(emp_file, encoding='utf-8-sig') # ใช้ utf-8-sig แก้ปัญหา BOM
         except Exception as e:
             st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {emp_file} ได้: {e}")
-    else:
-        st.warning(f"ไม่พบไฟล์ {emp_file} (สำหรับข้อมูลเริ่มต้น) หากต้องการใช้ข้อมูลกรุณาอัปโหลด")
-
+    
     # 2. โหลดไฟล์ของขวัญ
     if os.path.exists(prize_file):
         try:
-            prize_data = pd.read_csv(prize_file) 
+            prize_data = pd.read_csv(prize_file, encoding='utf-8-sig') 
         except Exception as e:
             st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {prize_file} ได้: {e}")
-    else:
-        st.warning(f"ไม่พบไฟล์ {prize_file} (สำหรับข้อมูลเริ่มต้น) หากต้องการใช้ข้อมูลกรุณาอัปโหลด")
-
+    
 
     # 3. ตรวจสอบความสมบูรณ์ของข้อมูลและคอลัมน์ที่จำเป็น
     if employee_data.empty or prize_data.empty:
-        # หากไม่มีไฟล์เริ่มต้น จะคืนค่า DataFrame ว่าง
         return pd.DataFrame(), pd.DataFrame()
         
     required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
@@ -101,16 +97,12 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     st.success("โหลดข้อมูลเริ่มต้นสำเร็จ! (หากไฟล์เริ่มต้นมีอยู่)")
     return employee_data, prize_data 
 
-# ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: reset_application ***
-# ----------------------------------------------------
 def reset_application():
     """รีเซ็ต Session State, ล้างประวัติ และโหลดข้อมูลเริ่มต้นใหม่"""
     if os.path.exists(HISTORY_FILE):
         os.remove(HISTORY_FILE)
         
     st.cache_data.clear() 
-    # โหลดข้อมูลเริ่มต้นอีกครั้ง
     st.session_state.emp_df, st.session_state.prize_df = load_data() 
     st.session_state.draw_history = []
     st.session_state.selected_group = None 
@@ -118,15 +110,13 @@ def reset_application():
     time.sleep(1)
     st.rerun()
 
-# ----------------------------------------------------
-# *** ฟังก์ชัน to_csv_bytes, run_draw, get_base64_image เหมือนเดิม ***
-# ----------------------------------------------------
 def to_csv_bytes(df):
     """แปลง DataFrame เป็น CSV bytes สำหรับการดาวน์โหลด"""
     csv_bytes = df.to_csv(index=False, encoding='utf_8_sig').encode('utf-8')
     return csv_bytes
 
 def run_draw(group, emp_df, prize_df):
+    """ทำการสุ่มจับรางวัลสำหรับกลุ่มที่เลือก"""
     group_clean = str(group).strip()
     available_employees = emp_df[(emp_df['กลุ่มจับรางวัล'] == group_clean) & (emp_df['สถานะ'] == 'พร้อมสุ่ม')]
     available_prizes = prize_df[(prize_df['กลุ่มจับรางวัล'] == group_clean) & (prize_df['จำนวนคงเหลือ'] > 0)]
@@ -149,6 +139,7 @@ def run_draw(group, emp_df, prize_df):
     return results
 
 def get_base64_image(image_file):
+    """แปลงไฟล์รูปภาพเป็น Base64 สำหรับใช้ใน CSS (พื้นหลัง)"""
     try:
         with open(image_file, "rb") as f:
             data = base64.b64encode(f.read()).decode("utf-8")
@@ -163,6 +154,7 @@ def get_base64_image(image_file):
     except FileNotFoundError:
         return None
     except Exception as e:
+        # ไม่แสดง error ถ้าไม่ใช่ไฟล์หลัก (เช่น background)
         return None
         
 # ----------------------------------------------------
@@ -185,7 +177,14 @@ def main():
         st.session_state.selected_group = None 
     
     if 'draw_history' not in st.session_state:
-        st.session_state.draw_history = [] 
+        # หาก draw_history หายไป ให้สร้างใหม่และลองโหลดจากไฟล์ (กรณี app crash)
+        try:
+             if os.path.exists(HISTORY_FILE):
+                st.session_state.draw_history = pd.read_csv(HISTORY_FILE).to_dict('records')
+             else:
+                st.session_state.draw_history = []
+        except:
+             st.session_state.draw_history = []
 
     
     with st.sidebar:
@@ -195,7 +194,7 @@ def main():
         st.markdown("---")
         
         # *** ส่วนดาวน์โหลดเทมเพลต (เหมือนเดิม) ***
-        st.markdown("### ⬇️ ดาวน์โหลดเทมเพลต CSV")
+        st.markdown("### ⬇️ ดาวน์โหลดเทมเพลต")
         
         # 1. เทมเพลตพนักงาน
         emp_template = pd.DataFrame({
@@ -205,7 +204,7 @@ def main():
             'สถานะ': ['พร้อมสุ่ม', 'พร้อมสุ่ม']
         })
         st.download_button(
-            label="📄 Template: employees.csv",
+            label="📄 Template: พนักงาน (CSV)",
             data=to_csv_bytes(emp_template),
             file_name='employees_template.csv',
             mime='text/csv'
@@ -218,7 +217,7 @@ def main():
             'จำนวนคงเหลือ': [3, 10, 1]
         })
         st.download_button(
-            label="🎁 Template: prizes.csv",
+            label="🎁 Template: ของรางวัล (CSV)",
             data=to_csv_bytes(prize_template),
             file_name='prizes_template.csv',
             mime='text/csv'
@@ -226,11 +225,49 @@ def main():
         st.markdown("---")
 
 
-        # *** ส่วนอัปโหลดไฟล์ข้อมูลใหม่ (แก้ไขตรงนี้) ***
-        st.markdown("### ⬆️ อัปโหลดไฟล์ข้อมูลใหม่ (ใช้ในหน่วยความจำ)")
-        uploaded_emp = st.file_uploader("อัปโหลด Employee File (employees.csv)", type=['csv'], key='uploaded_emp_file')
-        uploaded_prize = st.file_uploader("อัปโหลด Prize File (prizes.csv)", type=['csv'], key='uploaded_prize_file')
+        # *** ส่วนอัปโหลดไฟล์ข้อมูลใหม่ (รองรับ CSV/Excel) ***
+        st.markdown("### ⬆️ อัปโหลดไฟล์ข้อมูลใหม่ (.csv / .xlsx)")
+        uploaded_type = ['csv', 'xlsx', 'xls']
         
+        uploaded_emp = st.file_uploader(
+            "อัปโหลด Employee File", 
+            type=uploaded_type, 
+            key='uploaded_emp_file'
+        )
+        uploaded_prize = st.file_uploader(
+            "อัปโหลด Prize File", 
+            type=uploaded_type, 
+            key='uploaded_prize_file'
+        )
+        
+        
+        def read_uploaded_file(uploaded_file):
+            """ฟังก์ชันช่วยอ่านไฟล์ที่อัปโหลด รองรับ CSV (หลาย encoding) และ Excel"""
+            if uploaded_file is None:
+                return None
+            
+            file_ext = uploaded_file.name.split('.')[-1].lower()
+            uploaded_file.seek(0)
+            
+            try:
+                if file_ext in ['xlsx', 'xls']:
+                    return pd.read_excel(uploaded_file)
+                elif file_ext == 'csv':
+                    # ลองหลาย Encoding เพื่อแก้ปัญหา 'invalid start byte'
+                    try:
+                        return pd.read_csv(uploaded_file, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        uploaded_file.seek(0)
+                        try:
+                            return pd.read_csv(uploaded_file, encoding='cp874')
+                        except:
+                            uploaded_file.seek(0)
+                            return pd.read_csv(uploaded_file, encoding='utf-8-sig')
+                else:
+                    return None
+            except Exception as e:
+                raise e # ส่ง Exception ต่อไปให้ส่วนเรียกใช้จัดการ
+                
         
         # ใช้ปุ่มเดียวในการประมวลผลไฟล์ที่อัปโหลด
         if st.button("ประมวลผลและโหลดข้อมูลใหม่", key='upload_reload_btn', type="primary"):
@@ -240,13 +277,16 @@ def main():
             # A. ประมวลผลไฟล์พนักงาน
             if uploaded_emp is not None:
                 try:
-                    new_emp_df = pd.read_csv(uploaded_emp)
+                    new_emp_df = read_uploaded_file(uploaded_emp)
                     
+                    if new_emp_df is None:
+                         st.error("ไม่รองรับรูปแบบไฟล์พนักงาน")
+                         
                     # ตรวจสอบคอลัมน์ที่สำคัญ
                     required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
-                    if not all(col in new_emp_df.columns for col in required_emp_cols):
+                    if new_emp_df is not None and not all(col in new_emp_df.columns for col in required_emp_cols):
                         st.error(f"ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
-                    else:
+                    elif new_emp_df is not None:
                         if 'สถานะ' not in new_emp_df.columns:
                             new_emp_df['สถานะ'] = 'พร้อมสุ่ม'
                         st.session_state.emp_df = new_emp_df # บันทึกเข้า Session State โดยตรง
@@ -258,13 +298,16 @@ def main():
             # B. ประมวลผลไฟล์ของขวัญ
             if uploaded_prize is not None:
                 try:
-                    new_prize_df = pd.read_csv(uploaded_prize)
+                    new_prize_df = read_uploaded_file(uploaded_prize)
                     
+                    if new_prize_df is None:
+                         st.error("ไม่รองรับรูปแบบไฟล์ของขวัญ")
+                         
                     # ตรวจสอบคอลัมน์และแปลงประเภทข้อมูล
                     required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ'] 
-                    if not all(col in new_prize_df.columns for col in required_prize_cols):
+                    if new_prize_df is not None and not all(col in new_prize_df.columns for col in required_prize_cols):
                         st.error(f"ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
-                    else:
+                    elif new_prize_df is not None:
                         new_prize_df['จำนวนคงเหลือ'] = pd.to_numeric(new_prize_df['จำนวนคงเหลือ'], errors='coerce').fillna(0).astype(int)
                         st.session_state.prize_df = new_prize_df # บันทึกเข้า Session State โดยตรง
                         st.success("ประมวลผลไฟล์ของขวัญสำเร็จ!")
@@ -320,8 +363,6 @@ def main():
         st.error("ไม่สามารถเริ่มการสุ่มได้ เนื่องจากข้อมูลพนักงานหรือของขวัญไม่สมบูรณ์ (กรุณาอัปโหลดไฟล์ใหม่)")
         return 
 
-    # โค้ดส่วนที่เหลือ (ส่วนแสดงผล UI และการสุ่มรางวัล) ยังคงเหมือนเดิม
-    # ...
     
     groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
@@ -417,13 +458,14 @@ def main():
     st.markdown("## เลือกกลุ่มจับรางวัล:")
     
     n_groups = len(groups)
-    cols_weights = [1] * (n_groups + 2) 
     
+    # สร้างคอลัมน์สำหรับปุ่มกลุ่ม
     if n_groups > 0:
-        cols_center = st.columns(cols_weights) 
+        # กำหนดให้ปุ่มอยู่ตรงกลางโดยมีคอลัมน์ dummy ซ้ายขวา
+        cols = st.columns(n_groups + 2) 
         
         for i, group in enumerate(groups):
-            with cols_center[i + 1]: 
+            with cols[i + 1]: 
                 if st.button(group, key=f"group_btn_{group}", help=f"คลิกเพื่อเลือกกลุ่ม {group} เพื่อเตรียมสุ่ม", use_container_width=True):
                     st.session_state.selected_group = group
                     st.rerun() 
@@ -460,7 +502,7 @@ def main():
                     for i, item in enumerate(draw_results):
                         
                         try:
-                            # โครงสร้างเดิม: ((ชื่อ, แผนก), ชื่อรางวัล)
+                            # โครงสร้าง: ((ชื่อ, แผนก), ชื่อรางวัล)
                             (winner_name, winner_dept), prize = item 
                         except (ValueError, TypeError):
                             st.error(f"โครงสร้างข้อมูลผลลัพธ์ผิดพลาดในรายการที่ {i+1} : {item}")
@@ -531,7 +573,14 @@ def main():
     st.markdown("---")
     
 if __name__ == '__main__':
+    # Initial check and setup for draw_history
     if 'draw_history' not in st.session_state:
-        st.session_state.draw_history = [] 
-        
+        try:
+             if os.path.exists(HISTORY_FILE):
+                st.session_state.draw_history = pd.read_csv(HISTORY_FILE).to_dict('records')
+             else:
+                st.session_state.draw_history = []
+        except:
+             st.session_state.draw_history = []
+
     main()
