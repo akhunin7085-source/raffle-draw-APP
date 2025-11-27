@@ -1,139 +1,179 @@
 import streamlit as st
 import pandas as pd
-import io
-from datetime import datetime
 import os
-import qrcode
-import base64
+import numpy as np
 
 # ----------------------------------------------------
-# --- CONFIGURATION ---
+# --- CONFIGURATION & SETUP ---
 # ----------------------------------------------------
-HISTORY_FILE = 'draw_history.csv' 
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
+HISTORY_FILE = 'draw_history.csv'
+
+st.set_page_config(layout="wide", page_title="สรุปผลรวมการสุ่มทั้งหมด")
 
 # ----------------------------------------------------
-# --- FUNCTIONS ---
+# --- HELPER FUNCTIONS ---
 # ----------------------------------------------------
-def to_excel(df):
-    """Convert DataFrame to Excel format for download."""
-    output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name='Summary')
-    writer.close()
-    processed_data = output.getvalue()
-    return processed_data
 
-def generate_qr_code(url):
-    """Generate base64 encoded QR Code image from URL."""
-    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
-    qr.add_data(url)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
-    img_str = base64.b64encode(buffer.getvalue()).decode()
-    return f"data:image/png;base64,{img_str}"
+def load_summary_data():
+    """โหลดประวัติการสุ่มทั้งหมดจาก Session State และเตรียม DataFrame สรุป"""
+    if 'draw_history' not in st.session_state or not st.session_state.draw_history:
+        # ลองโหลดจากไฟล์เผื่อ app รีสตาร์ท
+        if os.path.exists(HISTORY_FILE):
+             try:
+                 history_list = pd.read_csv(HISTORY_FILE).replace({np.nan: None}).to_dict('records')
+                 st.session_state.draw_history = history_list
+             except Exception:
+                 return pd.DataFrame(), pd.DataFrame() # ส่ง DataFrame ว่างกลับไป
+        else:
+             return pd.DataFrame(), pd.DataFrame()
+             
+    # สร้าง DataFrame สรุปผลลัพธ์
+    df_summary = pd.DataFrame(st.session_state.draw_history)
+    
+    if df_summary.empty:
+        return pd.DataFrame(), pd.DataFrame()
+        
+    # เพิ่มคอลัมน์ลำดับที่ของการสุ่ม
+    df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
+    
+    # --------------------------------------------------------------
+    # สร้างตารางสรุปจำนวนคงเหลือจาก Session State ของ Prize (แก้ไข Key Error)
+    # --------------------------------------------------------------
+    if 'prize_df' in st.session_state and not st.session_state.prize_df.empty:
+        df_prize = st.session_state.prize_df
+        
+        # จัดกลุ่มเพื่อสรุปจำนวนเริ่มต้น
+        prize_total = df_prize.groupby('ชื่อของขวั')['จำนวนคงเหลือ'].sum().reset_index()
+        prize_total.columns = ['รายการของขวัญ', 'จำนวนคงเหลือ (ใหม่)']
+        
+        # จัดกลุ่มเพื่อสรุปจำนวนที่ถูกสุ่มไปแล้ว
+        draw_counts = df_summary.groupby('รายการของขวัญ').size().reset_index(name='จำนวนที่สุ่มแล้ว')
+        
+        # รวมตาราง
+        prize_summary = pd.merge(prize_total, draw_counts, on='รายการของขวัญ', how='outer').fillna(0)
+        
+        # คำนวณจำนวนคงเหลือที่แท้จริง
+        prize_summary['จำนวนคงเหลือ'] = prize_summary['จำนวนคงเหลือ (ใหม่)'] - prize_summary['จำนวนที่สุ่มแล้ว']
+        
+        # เลือกคอลัมน์ที่ต้องการแสดงผลและจัดเรียง (แก้ Key Error เดิม)
+        prize_summary = prize_summary[['รายการของขวัญ', 'จำนวนคงเหลือ']].sort_values(
+            by='จำนวนคงเหลือ', 
+            ascending=False
+        )
+    else:
+        # หากไม่มี session_state.prize_df ให้แสดงแค่รายการที่ถูกสุ่มไปแล้ว
+        draw_counts = df_summary.groupby('รายการของขวัญ').size().reset_index(name='จำนวนที่สุ่มแล้ว')
+        prize_summary = draw_counts[['รายการของขวัญ', 'จำนวนที่สุ่มแล้ว']]
+        
+    return df_summary, prize_summary
 
-# ----------------------------------------------------
-# --- Main Program (Summary Page) ---
-# ----------------------------------------------------
-def main():
+
+def render_summary_cards(df_summary):
+    """แสดงผลการสุ่มทั้งหมดในรูปแบบ Card"""
     
-    st.set_page_config(layout="wide", page_title="สรุปผลรางวัลรวม")
+    st.markdown("## 📜 ผลการสุ่มทั้งหมด (เรียงตามลำดับ)")
     
-    # -------------------- Sidebar: QR Code --------------------
-    # QR Code สำหรับหน้าผลรวม (ใช้ URL ของหน้า summary/1_Summary)
-    full_summary_url = f"{APP_BASE_URL}/Summary" 
-    
-    with st.sidebar:
-        st.header("🎟️ QR Code สำหรับหน้าสรุปผลรวม")
-        st.image(generate_qr_code(full_summary_url), caption="สแกนเพื่อดูผลรางวัลรวม", use_column_width="always")
-        st.markdown(f"**ลิงก์:** `{full_summary_url}`")
-        st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
-    
-    # -------------------- CSS Styles --------------------
-    st.markdown(f"""
+    if df_summary.empty:
+        st.info("ยังไม่มีการสุ่มรางวัลเกิดขึ้น")
+        return
+        
+    st.markdown("""
         <style>
-        .winner-card {{
-            background-color: #1e2124; 
-            border-radius: 10px;
+        .winner-card {
+            background-color: #262730; 
+            border-left: 5px solid #ff4b4b; /* สีแดง */
             padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-            height: 100%; 
-            border-left: 5px solid #4beaff; 
-        }}
-        .card-title {{
-            color: #4beaff; 
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        .card-title {
             font-size: 1.5em;
             font-weight: bold;
+            color: #ffcc00; /* สีเหลืองทอง */
             margin-bottom: 5px;
-        }}
-        .card-prize {{
-            color: #ffeb3b; 
-            font-size: 1.2em;
+        }
+        .card-prize {
+            font-size: 1.8em;
             font-weight: bold;
-        }}
-        .card-detail {{
-            color: #c9c9c9;
-            font-size: 1em;
-        }}
+            color: #4beaff; /* สีฟ้า */
+            margin-bottom: 10px;
+        }
+        .card-detail {
+            font-size: 1.1em;
+            color: #ffffff;
+            margin-top: 5px;
+        }
         </style>
         """, unsafe_allow_html=True)
-    
-    # -------------------- Load Data --------------------
-    df_summary = pd.DataFrame() 
-    try:
-        if os.path.exists(HISTORY_FILE):
-             df_summary = pd.read_csv(HISTORY_FILE)
-             if not df_summary.empty:
-                df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
-    except Exception:
-        pass 
+
+    cols = st.columns(3) # แสดง 3 คอลัมน์
+    col_index = 0
+
+    for index, row in df_summary.iterrows():
+        group_name = str(row['กลุ่มจับรางวัล'])
         
-    # -------------------- Header and Body --------------------
-    st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
+        # ------------------ ส่วนที่แก้ไข: เพิ่มหมายเลขรางวัล ------------------
+        prize_number_display = ""
+        # ตรวจสอบว่าคอลัมน์มีอยู่และค่าไม่ใช่ 0, None หรือ NaN
+        if 'หมายเลขรางวัล' in row and row['หมายเลขรางวัล'] not in [0, '0', None, np.nan, '', 'nan']:
+            prize_number_display = f" (No. **{row['หมายเลขรางวัล']}**)"
+        # ------------------------------------------------------------------
+
+        card_html = f"""
+        <div class="winner-card">
+            <div class="card-title">🏆 สุ่มลำดับที่: **{row['ลำดับที่']}**</div> 
+            <div class="card-prize">🎁 {row['รายการของขวัญ']}{prize_number_display}</div> 
+            <div class="card-detail">👤 ชื่อ: **{row['ชื่อ-นามสกุล']}**</div>
+            <div class="card-detail">🏢 แผนก: **{row['แผนก']}**</div>
+            <div class="card-detail">🏷️ กลุ่ม: **{group_name}**</div>
+        </div>
+        """
+        
+        with cols[col_index % 3]:
+            st.markdown(card_html, unsafe_allow_html=True)
+            
+        col_index += 1
+
+# ----------------------------------------------------
+# --- MAIN APP LOGIC ---
+# ----------------------------------------------------
+
+def app_sum_v4():
+    st.title("📊 สรุปผลรวมการสุ่มรางวัลทั้งหมด")
+    
+    df_summary, prize_summary = load_summary_data()
+    
     st.markdown("---")
-
-    # -------------------- Display Results --------------------
-    st.header("📋 รายชื่อผู้โชคดีทั้งหมด")
     
-    if not df_summary.empty:
-        NUM_COLUMNS = 2
-        cols = st.columns(NUM_COLUMNS)
-        
-        for index, row in df_summary.iterrows():
-            col_index = index % NUM_COLUMNS 
-            group_name = row['กลุ่มจับรางวัล'] if 'กลุ่มจับรางวัล' in row else row['แผนก']
-            
-            card_html = f"""
-            <div class="winner-card">
-                <div class="card-title">🎁 ลำดับที่: {row['ลำดับที่']}</div>
-                <div class="card-prize">🏆 {row['รายการของขวัญ']}</div>
-                <div class="card-detail">👤 ชื่อ: **{row['ชื่อ-นามสกุล']}**</div>
-                <div class="card-detail">🏢 กลุ่ม: **{group_name}**</div>
-            </div>
-            """
-            
-            with cols[col_index]:
-                st.markdown(card_html, unsafe_allow_html=True)
-
-        st.markdown("---")
-        
-        st.subheader("⬇️ ไฟล์รางวัลสำหรับการพิมพ์ (รูปแบบตาราง)")
-        excel_data = to_excel(df_summary)
-        
-        st.download_button(
-            label="💾 ดาวน์โหลดไฟล์ Excel",
-            data=excel_data,
-            file_name=f'Summary_Raffle_Draw_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            type="primary"
-        )
-        
+    # 1. แสดงผลการสุ่มทั้งหมด (Card View)
+    render_summary_cards(df_summary)
+    
+    st.markdown("---")
+    
+    # 2. แสดงตารางสรุปจำนวนรางวัล
+    st.markdown("## 📝 สรุปจำนวนรางวัลที่คงเหลือ / ถูกสุ่มไป")
+    if not prize_summary.empty:
+        if 'จำนวนคงเหลือ' in prize_summary.columns:
+            st.dataframe(
+                prize_summary, 
+                hide_index=True,
+                column_config={
+                    "รายการของขวัญ": "รายการของขวัญ",
+                    "จำนวนคงเหลือ": st.column_config.NumberColumn("จำนวนคงเหลือ (ทุกกลุ่ม)", format="%d"),
+                }
+            )
+        elif 'จำนวนที่สุ่มแล้ว' in prize_summary.columns:
+            st.dataframe(
+                prize_summary, 
+                hide_index=True,
+                column_config={
+                    "รายการของขวัญ": "รายการของขวัญ",
+                    "จำนวนที่สุ่มแล้ว": st.column_config.NumberColumn("จำนวนที่สุ่มแล้ว (ทุกกลุ่ม)", format="%d"),
+                }
+            )
     else:
-        st.info("ยังไม่มีข้อมูลการสุ่มรางวัล")
+        st.info("ไม่สามารถแสดงตารางสรุปรางวัลได้ (อาจไม่มีข้อมูลเริ่มต้นของรางวัล)")
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    app_sum_v4()
