@@ -11,7 +11,7 @@ import base64          # <--- เพิ่ม: ไลบรารีสำหร
 HISTORY_FILE = 'draw_history.csv'
 
 # *** สำคัญ: ต้องเปลี่ยนค่านี้เป็น URL หลักของแอปพลิเคชันของคุณ ***
-APP_BASE_URL = "YOUR_APP_BASE_URL_HERE" 
+APP_BASE_URL = "https://lws-draw-app-final.streamlit.app/Summary" 
 # ตัวอย่าง: "https://your-app-name.streamlit.app"
 # ----------------------------------------------------
 
