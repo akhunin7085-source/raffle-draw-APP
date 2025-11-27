@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-# บรรทัดนี้ได้รับการแก้ไขและพิมพ์ใหม่ เพื่อลบอักขระ U+00A0
 import io 
 from datetime import datetime
 import os
@@ -21,10 +20,10 @@ warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv'
 EMPLOYEE_FILE = 'employees.csv' # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
-PRIZE_FILE = 'prizes.csv'        # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
+PRIZE_FILE = 'prizes.csv'      # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
 
 # ----------------------------------------------------
-# --- FUNCTIONS (ไม่เปลี่ยนแปลงการทำงาน) ---
+# --- FUNCTIONS ---
 # ----------------------------------------------------
 
 def save_history(history_list):
@@ -74,11 +73,7 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
         
     required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
     required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ'] 
-    # เพิ่มการตรวจสอบสำหรับคอลัมน์ 'หมายเลขสลาก' (ตามที่ app ต้องการในไฟล์ prizes.csv)
-    if 'หมายเลขสลาก' not in prize_data.columns and 'หมายเลข' in prize_data.columns:
-        prize_data.rename(columns={'หมายเลข': 'หมายเลขสลาก'}, inplace=True)
-        st.warning("⚠️ แก้ไข: ตรวจพบ 'หมายเลข' ใน prizes.csv และเปลี่ยนเป็น 'หมายเลขสลาก' ให้แล้ว")
-        
+    
     if not all(col in employee_data.columns for col in required_emp_cols):
         st.error(f"ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
         return pd.DataFrame(), pd.DataFrame()
@@ -124,23 +119,11 @@ def run_draw(group, emp_df, prize_df):
     """ทำการสุ่มจับรางวัลสำหรับกลุ่มที่เลือก"""
     group_clean = str(group).strip()
     available_employees = emp_df[(emp_df['กลุ่มจับรางวัล'] == group_clean) & (emp_df['สถานะ'] == 'พร้อมสุ่ม')]
-    
-    # *** ปรับปรุงการสุ่มรางวัลให้ใช้ 'หมายเลขสลาก' หากมี ***
-    prize_has_ticket = 'หมายเลขสลาก' in prize_df.columns and prize_df['หมายเลขสลาก'].nunique() > 0
-    
     available_prizes = prize_df[(prize_df['กลุ่มจับรางวัล'] == group_clean) & (prize_df['จำนวนคงเหลือ'] > 0)]
     
     prize_list = []
-    if prize_has_ticket:
-        # ใช้ 'หมายเลขสลาก' เป็นตัวแทนรายการของขวัญในการสุ่ม
-        for index, row in available_prizes.iterrows():
-            prize_name = row['ชื่อของขวัญ']
-            ticket_number = row.get('หมายเลขสลาก', prize_name) # ใช้ชื่อของขวัญถ้าไม่มีหมายเลขสลาก
-            prize_list.extend([f"{prize_name} ({ticket_number})"] * row['จำนวนคงเหลือ'])
-    else:
-        # ใช้ 'ชื่อของขวัญ' ธรรมดา
-        for index, row in available_prizes.iterrows():
-            prize_list.extend([row['ชื่อของขวัญ']] * row['จำนวนคงเหลือ'])
+    for index, row in available_prizes.iterrows():
+        prize_list.extend([row['ชื่อของขวัญ']] * row['จำนวนคงเหลือ'])
         
     max_draws = min(len(available_employees), len(prize_list))
     
@@ -158,14 +141,8 @@ def run_draw(group, emp_df, prize_df):
 def get_base64_image(image_file):
     """แปลงไฟล์รูปภาพเป็น Base64 สำหรับใช้ใน CSS (พื้นหลัง)"""
     try:
-        # ตรวจสอบว่าไฟล์มีอยู่จริงหรือไม่
-        if not os.path.exists(image_file):
-            return None
-            
         with open(image_file, "rb") as f:
             data = base64.b64encode(f.read()).decode("utf-8")
-        
-        # ตรวจสอบประเภทไฟล์
         if image_file.lower().endswith(('.png')):
             mime_type = 'image/png'
         elif image_file.lower().endswith(('.jpg', '.jpeg')):
@@ -173,10 +150,11 @@ def get_base64_image(image_file):
         else:
             mime_type = 'image/jpg' 
             
-        return f"data:{mime_type};base64,{data}"
+        return f"data:image/{mime_type};base64,{data}"
+    except FileNotFoundError:
+        return None
     except Exception as e:
         # ไม่แสดง error ถ้าไม่ใช่ไฟล์หลัก (เช่น background)
-        print(f"Background image load error: {e}")
         return None
         
 # ----------------------------------------------------
@@ -215,7 +193,7 @@ def main():
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         
-        # *** ส่วนดาวน์โหลดเทมเพลต ***
+        # *** ส่วนดาวน์โหลดเทมเพลต (เหมือนเดิม) ***
         st.markdown("### ⬇️ ดาวน์โหลดเทมเพลต")
         
         # 1. เทมเพลตพนักงาน
@@ -233,9 +211,7 @@ def main():
         )
         
         # 2. เทมเพลตของรางวัล 
-        # แก้ไขเทมเพลตให้มี 'หมายเลขสลาก' ตามที่ app คาดหวัง
         prize_template = pd.DataFrame({
-            'หมายเลขสลาก': [1, 2, 1], # เพิ่มคอลัมน์นี้เข้ามา
             'ชื่อของขวัญ': ['ตั๋วเครื่องบิน', 'พัดลม', 'ทีวี 55 นิ้ว'],
             'กลุ่มจับรางวัล': ['อายุงาน 1-5 ปี', 'อายุงาน 1-5 ปี', 'อายุงาน 20 ปีขึ้นไป'],
             'จำนวนคงเหลือ': [3, 10, 1]
@@ -278,23 +254,18 @@ def main():
                     return pd.read_excel(uploaded_file)
                 elif file_ext == 'csv':
                     # ลองหลาย Encoding เพื่อแก้ปัญหา 'invalid start byte'
-                    encodings = ['utf-8', 'utf-8-sig', 'cp874', 'latin1']
-                    for encoding in encodings:
+                    try:
+                        return pd.read_csv(uploaded_file, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        uploaded_file.seek(0)
                         try:
-                            df = pd.read_csv(uploaded_file, encoding=encoding)
-                            # ตรวจสอบว่า DataFrame มีข้อมูลหรือไม่ (ถ้ามีข้อมูลแสดงว่าอ่านได้)
-                            if not df.empty:
-                                return df
+                            return pd.read_csv(uploaded_file, encoding='cp874')
+                        except:
                             uploaded_file.seek(0)
-                        except Exception as e:
-                            uploaded_file.seek(0)
-                    
-                    # หากลองทุก encoding แล้วยังไม่ได้ผล ให้ขึ้น error
-                    raise UnicodeDecodeError("All encoding attempts failed.")
+                            return pd.read_csv(uploaded_file, encoding='utf-8-sig')
                 else:
                     return None
             except Exception as e:
-                #st.error(f"Error in read_uploaded_file: {e}")
                 raise e # ส่ง Exception ต่อไปให้ส่วนเรียกใช้จัดการ
                 
         
@@ -332,12 +303,6 @@ def main():
                     if new_prize_df is None:
                          st.error("ไม่รองรับรูปแบบไฟล์ของขวัญ")
                          
-                    # แก้ไข/ตรวจสอบคอลัมน์ 'หมายเลขสลาก'
-                    if new_prize_df is not None:
-                        if 'หมายเลข' in new_prize_df.columns and 'หมายเลขสลาก' not in new_prize_df.columns:
-                             new_prize_df.rename(columns={'หมายเลข': 'หมายเลขสลาก'}, inplace=True)
-                             st.warning("⚠️ แก้ไข: ตรวจพบ 'หมายเลข' ใน prizes.csv และเปลี่ยนเป็น 'หมายเลขสลาก' ให้แล้ว")
-                             
                     # ตรวจสอบคอลัมน์และแปลงประเภทข้อมูล
                     required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ'] 
                     if new_prize_df is not None and not all(col in new_prize_df.columns for col in required_prize_cols):
@@ -362,7 +327,7 @@ def main():
                 
         st.markdown("---")
         
-        # *** ปุ่มรีเซ็ตข้อมูลทั้งหมด ***
+        # *** ปุ่มรีเซ็ตข้อมูลทั้งหมด (เหมือนเดิม) ***
         st.markdown("### 💣 การควบคุมข้อมูล (สำหรับ Admin)")
         if st.button("🔴 ล้างประวัติการสุ่ม (Reset History)", help="จะลบไฟล์ draw_history.csv และรีเซ็ตสถานะการสุ่มทั้งหมด", use_container_width=True):
             if st.session_state.get('confirm_reset', False):
@@ -403,10 +368,9 @@ def main():
     groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
     groups = sorted(list(set(groups))) 
     
-# --- BEGIN: UI/CSS Changes ---
-# ----------------------------------------------------
-# 3. CSS และ UI Main Body (Glassmorphism + Gold Theme)
-# ----------------------------------------------------
+    # ----------------------------------------------------
+    # 3. CSS และ UI Main Body
+    # ----------------------------------------------------
     BACKGROUND_IMAGE_FILE = 'background.jpg' 
     base64_bg = get_base64_image(BACKGROUND_IMAGE_FILE)
 
@@ -420,27 +384,10 @@ def main():
         }}
         """
     else:
-        # Fallback to a dark background if image not found
         background_css = ".stApp { background-color: #0e1117; }" 
         
     st.markdown(f"""
         <style>
-        /* 1. Import Font */
-        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700&display=swap');
-        html, body, [class*="css"] {{
-            font-family: 'Kanit', sans-serif;
-        }}
-        
-        /* 2. Custom CSS Variables (Gold/Dark Theme) */
-        :root {{
-            --gold-color: #FFD700; /* Primary Gold */
-            --dark-gold-color: #C5B358; /* Secondary Gold */
-            --glass-bg: rgba(14, 17, 23, 0.7); /* Dark Glass Background */
-            --glass-border: rgba(255, 255, 255, 0.2); /* Light Glass Border */
-            --success-bg: #1e8449; 
-            --gold-glow: rgba(255, 215, 0, 0.4);
-        }}
-        
         {background_css}
         .block-container {{ 
             padding-top: 2rem;
@@ -448,111 +395,60 @@ def main():
             padding-left: 5rem;
             padding-right: 5rem;
         }}
-        
-        /* Glassmorphism Main Container */
         .main .block-container {{
             max-width: 1000px; 
             margin-left: auto;
             margin-right: auto;
-            background-color: var(--glass-bg); /* Dark Glass */
-            backdrop-filter: blur(8px); /* Glass effect */
-            border-radius: 15px;
-            border: 1px solid var(--glass-border); /* Subtle border */
-            padding: 30px; /* Increased padding for better feel */
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37); /* Glass Shadow */
+            background-color: rgba(14, 17, 23, 0.9); 
+            border-radius: 10px;
+            padding: 20px;
         }}
-        
-        /* Success Box / Announcement Box */
         .success-box {{ 
-            background-color: var(--success-bg); 
+            background-color: #1a5631; 
             color: white; 
-            padding: 20px; /* Increased padding */
-            border-left: 8px solid var(--gold-color); /* Gold Accent */
-            border-radius: 10px;
-            margin-bottom: 1.5rem;
-            font-size: 2.8em; /* Slightly larger */
-            font-weight: 700;
+            padding: 15px;
+            border-left: 6px solid #48a964; 
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            font-size: 2.5em; 
+            font-weight: bold;
             text-align: center; 
-            box-shadow: 0 0 15px var(--gold-glow); /* Gold Glow Effect */
-            transition: all 0.3s ease;
-            animation: pulse-gold 1.5s infinite alternate; /* Add subtle animation */
         }}
-
-        /* Keyframe for subtle gold pulse */
-        @keyframes pulse-gold {{
-            0% {{ box-shadow: 0 0 10px var(--gold-glow); }}
-            100% {{ box-shadow: 0 0 20px rgba(255, 215, 0, 0.8); }}
-        }}
-
-
-        
-        /* Main Draw Button (Gold) */
         .stButton>button[key="main_draw_btn"] {{ 
-            background-color: var(--gold-color); /* Gold */
-            color: #0e1117 !important; /* Black text on Gold */
-            border-radius: 10px;
-            padding: 12px 25px;
-            font-size: 1.4em; /* Larger font */
-            font-weight: 700;
-            box-shadow: 0 6px 15px rgba(255, 215, 0, 0.6); /* Stronger Gold Shadow */
+            background-color: #ff4b4b;
+            color: white !important;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(255, 75, 75, 0.4);
             transition: all 0.3s ease;
-            transform: scale(1.0);
         }}
-        .stButton>button[key="main_draw_btn"]:hover {{
-            background-color: var(--dark-gold-color); /* Darker Gold on hover */
-            transform: scale(1.05); /* Slight scale effect */
-            box-shadow: 0 8px 20px rgba(255, 215, 0, 0.8);
-        }}
-        
-        /* Group Selection Buttons (Subtle Gold/Dark) */
         .stButton>button[key^="group_btn_"] {{
-            background-color: rgba(30, 30, 30, 0.8) !important; /* Darker Glass button */
-            color: var(--gold-color) !important; 
-            border: 2px solid var(--dark-gold-color);
-            border-radius: 25px; /* More rounded */
-            padding: 10px 18px;
-            font-size: 1.05em;
-            font-weight: 500;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s;
+            background-color: #3e4856 !important; 
+            color: #4beaff !important; 
+            border: 2px solid #4beaff;
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s;
         }}
         .stButton>button[key^="group_btn_"]:hover {{
-            background-color: var(--dark-gold-color) !important;
+            background-color: #4beaff !important;
             color: #0e1117 !important;
-            border-color: var(--gold-color);
         }}
-        
-        /* Selected Group Button Highlight (Optional - requires custom implementation) */
-        /* Since Streamlit doesn't expose a clean "selected" state, we leave this as is. */
-
-        /* Headers */
         h1 {{
-            color: var(--gold-color); 
-            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7); /* Enhanced shadow */
+            color: #4beaff; 
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
             text-align: center; 
-            font-weight: 700;
-            margin-bottom: 0.5rem;
         }}
         h2 {{
             text-align: center; 
-            color: #ffffff;
-            margin-top: 1rem;
-            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
-        }}
-        h3 {{
-            color: var(--dark-gold-color);
-        }}
-        /* Info/Warning/Success boxes inside glass container */
-        .stAlert {{
-            background-color: rgba(255, 255, 255, 0.1) !important; 
-            backdrop-filter: blur(5px);
-            border: 1px solid rgba(255, 215, 0, 0.3);
-            border-radius: 10px;
         }}
         </style>
         """, unsafe_allow_html=True)
-    
-# --- END: UI/CSS Changes ---
     
     # ----------------------------------------------------
     # 4. แสดงผล Title และส่วนเลือกกลุ่ม
@@ -570,22 +466,6 @@ def main():
         
         for i, group in enumerate(groups):
             with cols[i + 1]: 
-                # เพิ่ม Logic สำหรับการเน้นปุ่มที่ถูกเลือก (Selected Group)
-                if st.session_state.selected_group == group:
-                    # ใช้ CSS พิเศษสำหรับปุ่มที่ถูกเลือก
-                    button_html = f"""
-                    <style>
-                    .stButton>button[key="group_btn_{group}"] {{
-                        background-color: var(--gold-color) !important;
-                        color: #0e1117 !important;
-                        border: 2px solid var(--gold-color);
-                        box-shadow: 0 0 10px var(--gold-glow);
-                        transform: scale(1.02);
-                    }}
-                    </style>
-                    """
-                    st.markdown(button_html, unsafe_allow_html=True)
-                    
                 if st.button(group, key=f"group_btn_{group}", help=f"คลิกเพื่อเลือกกลุ่ม {group} เพื่อเตรียมสุ่ม", use_container_width=True):
                     st.session_state.selected_group = group
                     st.rerun() 
@@ -603,7 +483,7 @@ def main():
         col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
         
         with col_btn_center:
-            st.markdown(f"**💡 กลุ่มที่พร้อมสุ่ม:** <span style='color:var(--gold-color); font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
+            st.markdown(f"**💡 กลุ่มที่พร้อมสุ่ม:** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
 
             if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม: **{selected_group}**", key="main_draw_btn", use_container_width=True):
                 
@@ -634,20 +514,12 @@ def main():
                         time.sleep(ROLLING_DURATION) 
                         
                         # B. Announce Winner
-                        # ตรวจสอบว่ามีข้อมูลหมายเลขสลากติดมาหรือไม่
-                        if '(' in prize and ')' in prize:
-                             prize_display = prize.split('(')[0].strip()
-                             ticket_number = prize.split('(')[-1].replace(')', '').strip()
-                             prize_text = f"{prize_display} (หมายเลขสลาก: {ticket_number})"
-                        else:
-                             prize_text = prize
-                             
                         with current_winner_box.container():
                             winner_message = f"""
                             <div class='success-box'>
                                 <span style='font-size: 0.8em; font-weight: normal;'>🎊 ผู้โชคดีคนล่าสุดคือ:</span><br>
-                                <span style='font-size: 1.0em; color: var(--gold-color);'>**{winner_name}**</span><br>
-                                <span style='font-size: 0.8em; color: #ffffff;'> (ได้รับ: {prize_text}) </span>
+                                <span style='font-size: 1.0em; color: #ffeb3b;'>**{winner_name}**</span><br>
+                                <span style='font-size: 0.8em; color: #ffffff;'> (ได้รับ: {prize}) </span>
                             </div>
                             """
                             st.markdown(winner_message, unsafe_allow_html=True)
@@ -664,11 +536,8 @@ def main():
                         st.session_state.emp_df = emp_df_copy 
                         
                         # อัปเดตสถานะของขวัญ (ลดจำนวนคงเหลือ 1 หน่วย โดยใช้ชื่อของขวัญ)
-                        # ต้องแยกชื่อของขวัญออกจากหมายเลขสลากก่อน
-                        prize_name_only = prize.split('(')[0].strip()
-                        
                         idx_prize = prize_df_copy.index[
-                            (prize_df_copy['ชื่อของขวัญ'] == prize_name_only) & 
+                            (prize_df_copy['ชื่อของขวัญ'] == prize) & 
                             (prize_df_copy['กลุ่มจับรางวัล'] == selected_group) & 
                             (prize_df_copy['จำนวนคงเหลือ'] > 0)
                         ].tolist()
@@ -715,3 +584,4 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
