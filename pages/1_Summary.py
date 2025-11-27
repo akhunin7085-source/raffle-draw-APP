@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import io # เพิ่มไลบรารี io สำหรับการจัดการไฟล์ในหน่วยความจำ
 
 # ----------------------------------------------------
 # --- CONFIGURATION & FILE PATHS ---
@@ -15,15 +16,10 @@ def load_history():
     if os.path.exists(HISTORY_FILE):
         try:
             df = pd.read_csv(HISTORY_FILE)
-            
-            # คอลัมน์หลักที่จำเป็นต้องมีใน draw_history.csv
             required_cols = ['ชื่อ-นามสกุล', 'รายการของขวัญ', 'กลุ่มจับรางวัล', 'แผนก']
-
-            # ตรวจสอบและเพิ่มคอลัมน์ที่ขาดหายไป
             for col in required_cols:
                 if col not in df.columns:
                     df[col] = ''
-            
             return df.fillna('')
         except Exception as e:
             st.error(f"ไม่สามารถอ่านไฟล์ประวัติ {HISTORY_FILE} ได้: {e}")
@@ -32,16 +28,22 @@ def load_history():
         return pd.DataFrame()
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: to_csv_bytes (ใช้สร้างไฟล์ดาวน์โหลด) ***
+# *** ฟังก์ชันผู้ช่วย: to_excel_bytes (ใหม่) ***
 # ----------------------------------------------------
-def to_csv_bytes(df):
-    """แปลง DataFrame เป็น CSV bytes สำหรับการดาวน์โหลด โดยใช้ encoding สำหรับภาษาไทย"""
+def to_excel_bytes(df):
+    """แปลง DataFrame เป็น Excel (.xlsx) bytes สำหรับการดาวน์โหลด"""
     # เลือกเฉพาะคอลัมน์ที่ต้องการ: ชื่อ-นามสกุล, รายการของขวัญ, กลุ่มจับรางวัล, แผนก
     cols_to_keep = ['ชื่อ-นามสกุล', 'รายการของขวัญ', 'กลุ่มจับรางวัล', 'แผนก']
     df_download = df[cols_to_keep]
     
-    csv_bytes = df_download.to_csv(index=False, encoding='utf_8_sig').encode('utf-8')
-    return csv_bytes
+    # ใช้ BytesIO เพื่อสร้างไฟล์ Excel ในหน่วยความจำ
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df_download.to_excel(writer, index=False, sheet_name='สรุปผลการจับรางวัล')
+    
+    # ส่งคืนค่าเป็น bytes
+    processed_data = output.getvalue()
+    return processed_data
 
 # ----------------------------------------------------
 # --- Main Program (Streamlit UI) ---
@@ -101,12 +103,12 @@ df_history = load_history()
 if df_history.empty or df_history['รายการของขวัญ'].dropna().empty:
     st.warning("ยังไม่มีข้อมูลการสุ่มรางวัลที่สมบูรณ์ กรุณาตรวจสอบว่ามีการสุ่มและบันทึกข้อมูลแล้ว")
 else:
-    # ** NEW: ส่วนดาวน์โหลดสรุปผล **
+    # ** ส่วนดาวน์โหลดสรุปผล (เป็น Excel) **
     st.download_button(
-        label="⬇️ ดาวน์โหลดสรุปรายชื่อผู้ได้รับรางวัล (CSV)",
-        data=to_csv_bytes(df_history),
-        file_name=f'prize_summary_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.csv',
-        mime='text/csv',
+        label="⬇️ ดาวน์โหลดสรุปรายชื่อผู้ได้รับรางวัล (Excel .xlsx)",
+        data=to_excel_bytes(df_history), # เปลี่ยนมาใช้ฟังก์ชัน to_excel_bytes
+        file_name=f'prize_summary_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx', # เปลี่ยนนามสกุลเป็น .xlsx
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         use_container_width=True,
         type="primary"
     )
@@ -125,7 +127,6 @@ else:
     for i in range(num_rows):
         row = df_display.iloc[i]
         
-        # กำหนดให้แสดงในคอลัมน์ซ้าย (i%2 == 0) หรือคอลัมน์ขวา (i%2 == 1)
         with cols[i % 2]:
             
             html_content = f"""
