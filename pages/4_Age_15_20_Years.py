@@ -15,7 +15,7 @@ GROUP_NAME = "อายุงาน 15-20 ปี"
 # --- CONFIGURATION ---
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv' 
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # *** (หาก URL แอปของคุณเปลี่ยนไป ให้แก้ไขที่นี่) ***
+APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
 
 
 # ----------------------------------------------------
@@ -39,6 +39,28 @@ def main():
     
     st.set_page_config(layout="wide", page_title=f"ผลรางวัล: {GROUP_NAME}") 
     
+    # -------------------- โค้ดสร้าง URL Path --------------------
+    try:
+        page_name_full = os.path.basename(__file__).replace('.py', '') 
+        page_name_parts = page_name_full.split('_', 1)
+        if len(page_name_parts) > 1:
+            page_name = page_name_parts[1]
+        else:
+            page_name = page_name_full
+            
+    except Exception:
+        page_name = "Summary" 
+    
+    group_url = f"{APP_BASE_URL}/{page_name}"
+    
+    # -------------------- Sidebar: QR Code (ซ่อนที่นี่) --------------------
+    with st.sidebar:
+        st.header(f"🎟️ QR Code สำหรับกลุ่ม: {GROUP_NAME}")
+        st.image(generate_qr_code(group_url), caption=f"สแกนเพื่อดูผลรางวัล: {GROUP_NAME}", use_column_width="always")
+        st.markdown(f"**ลิงก์:** `{group_url}`")
+        st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
+        
+
     # -------------------- CSS Styles --------------------
     st.markdown(f"""
         <style>
@@ -77,7 +99,6 @@ def main():
              
              # *** กรองข้อมูลตาม GROUP_NAME ที่กำหนดไว้ ***
              if 'กลุ่มจับรางวัล' in df_summary_all.columns:
-                 # ใช้ .str.strip() เพื่อความชัวร์ว่าไม่มีช่องว่างในชื่อกลุ่ม
                  df_summary = df_summary_all[df_summary_all['กลุ่มจับรางวัล'].astype(str).str.strip() == GROUP_NAME]
              
              if not df_summary.empty:
@@ -85,34 +106,8 @@ def main():
     except Exception:
         pass 
 
-    # -------------------- Header and QR Code for this Group --------------------
+    # -------------------- Header and Body --------------------
     st.title(f"🎉 ผลรางวัลเฉพาะกลุ่ม: {GROUP_NAME}")
-    st.markdown("---")
-
-    # *** โค้ดแก้ไข URL Path (แม่นยำกว่าเดิม) ***
-    try:
-        page_name_full = os.path.basename(__file__).replace('.py', '') 
-        page_name_parts = page_name_full.split('_', 1)
-        if len(page_name_parts) > 1:
-            # ถ้ามีตัวเลขนำหน้า เช่น '2_Age_1_5_Years' จะได้ 'Age_1_5_Years'
-            page_name = page_name_parts[1]
-        else:
-            # ถ้าไม่มีตัวเลขนำหน้า เช่น 'Summary' จะได้ 'Summary'
-            page_name = page_name_full
-            
-    except Exception:
-        page_name = "Summary" # Fallback
-    
-    group_url = f"{APP_BASE_URL}/{page_name}" # URL ที่ใช้สร้าง QR Code
-    # *** สิ้นสุดโค้ดแก้ไข ***
-
-    st.header("🎟️ QR Code สำหรับกลุ่มนี้")
-    
-    col_qr_left, col_qr_center, col_qr_right = st.columns([1, 1, 1])
-    with col_qr_center:
-        st.image(generate_qr_code(group_url), caption=f"สแกนเพื่อดูผลรางวัล: {GROUP_NAME}", use_column_width="auto")
-    
-    st.info(f"ลิงก์ QR Code: {group_url}")
     st.markdown("---")
 
     # -------------------- Display Results --------------------
@@ -143,3 +138,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
