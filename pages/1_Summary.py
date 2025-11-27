@@ -1,153 +1,139 @@
 import streamlit as st
 import pandas as pd
+import io
+from datetime import datetime
 import os
-import io 
-# ลบ: import qrcode
-# ลบ: import base64
+import qrcode
+import base64
 
 # ----------------------------------------------------
-# --- CONFIGURATION & FILE PATHS ---
+# --- CONFIGURATION ---
 # ----------------------------------------------------
-HISTORY_FILE = 'draw_history.csv'
-
-# *** ลบ: APP_BASE_URL ออกแล้ว ***
-# ----------------------------------------------------
+HISTORY_FILE = 'draw_history.csv' 
+APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
 
 # ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: Load Data Helper ***
+# --- FUNCTIONS ---
 # ----------------------------------------------------
-def load_history():
-    """โหลดประวัติผลสุ่มจากไฟล์ CSV พร้อมตรวจสอบและแก้ไขคอลัมน์ที่จำเป็น"""
-    if os.path.exists(HISTORY_FILE):
-        try:
-            df = pd.read_csv(HISTORY_FILE)
-            required_cols = ['ชื่อ-นามสกุล', 'รายการของขวัญ', 'กลุ่มจับรางวัล', 'แผนก']
-            for col in required_cols:
-                if col not in df.columns:
-                    df[col] = ''
-            return df.fillna('')
-        except Exception as e:
-            st.error(f"ไม่สามารถอ่านไฟล์ประวัติ {HISTORY_FILE} ได้: {e}")
-            return pd.DataFrame()
-    else:
-        return pd.DataFrame()
-
-# ----------------------------------------------------
-# *** ฟังก์ชันผู้ช่วย: to_excel_bytes ***
-# ----------------------------------------------------
-def to_excel_bytes(df):
-    """แปลง DataFrame เป็น Excel (.xlsx) bytes สำหรับการดาวน์โหลด"""
-    cols_to_keep = ['ชื่อ-นามสกุล', 'รายการของขวัญ', 'กลุ่มจับรางวัล', 'แผนก']
-    df_download = df[cols_to_keep]
+def to_excel(df):
+    """Convert DataFrame to Excel format for download."""
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df_download.to_excel(writer, index=False, sheet_name='สรุปผลการจับรางวัล')
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    df.to_excel(writer, index=False, sheet_name='Summary')
+    writer.close()
     processed_data = output.getvalue()
     return processed_data
 
-# ----------------------------------------------------
-# *** ลบ: ฟังก์ชัน generate_qr_code ออกแล้ว ***
-# ----------------------------------------------------
+def generate_qr_code(url):
+    """Generate base64 encoded QR Code image from URL."""
+    qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
 
 # ----------------------------------------------------
-# --- Main Program (Streamlit UI) ---
+# --- Main Program (Summary Page) ---
 # ----------------------------------------------------
-
-# *** ลบ: ส่วนแสดงผล QR Code ใน Sidebar ออกแล้ว ***
-
-
-st.set_page_config(
-    layout="wide",
-    page_title="สรุปผลการสุ่มรางวัลทั้งหมด",
-    initial_sidebar_state="collapsed"
-)
-
-# --- CSS Styling for Prize Cards ---
-# ... (โค้ด CSS เหมือนเดิม) ...
-st.markdown("""
-<style>
-/* Custom CSS for the Prize Card Layout */
-.prize-card {
-    background-color: #1a1a1a; 
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-left: 5px solid #ff4b4b; /* แถบสีแดงด้านซ้าย */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-.prize-name {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: #ffd700;
-    margin-bottom: 5px;
-}
-.winner-name {
-    font-size: 1.5em;
-    font-weight: bold;
-    color: #4beaff;
-    margin-top: 5px;
-}
-.group-info {
-    font-size: 1.0em;
-    color: #cccccc;
-    margin-top: 5px;
-}
-.card-icon {
-    font-size: 1.5em;
-    margin-right: 10px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
-st.markdown("---")
-
-df_history = load_history()
-
-if df_history.empty or df_history['รายการของขวัญ'].dropna().empty:
-    st.warning("ยังไม่มีข้อมูลการสุ่มรางวัลที่สมบูรณ์ กรุณาตรวจสอบว่ามีการสุ่มและบันทึกข้อมูลแล้ว")
-else:
-    # ** ส่วนดาวน์โหลดสรุปผล (เป็น Excel) **
-    st.download_button(
-        label="⬇️ ดาวน์โหลดสรุปรายชื่อผู้ได้รับรางวัล (Excel .xlsx)",
-        data=to_excel_bytes(df_history),
-        file_name=f'prize_summary_{pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")}.xlsx',
-        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        use_container_width=True,
-        type="primary"
-    )
-    st.markdown("---")
+def main():
     
-    # 1. แสดงผลลัพธ์รวมในรูปแบบ Card View (2 คอลัมน์)
-    st.header(f"📋 รายชื่อผู้โชคดีทั้งหมด ({len(df_history)} รายการ)")
+    st.set_page_config(layout="wide", page_title="สรุปผลรางวัลรวม")
     
-    df_display = df_history.sort_values(by=['กลุ่มจับรางวัล', 'รายการของขวัญ']).reset_index(drop=True)
+    # -------------------- Sidebar: QR Code --------------------
+    # QR Code สำหรับหน้าผลรวม (ใช้ URL ของหน้า summary/1_Summary)
+    full_summary_url = f"{APP_BASE_URL}/Summary" 
     
-    num_rows = len(df_display)
-    cols = st.columns(2)
+    with st.sidebar:
+        st.header("🎟️ QR Code สำหรับหน้าสรุปผลรวม")
+        st.image(generate_qr_code(full_summary_url), caption="สแกนเพื่อดูผลรางวัลรวม", use_column_width="always")
+        st.markdown(f"**ลิงก์:** `{full_summary_url}`")
+        st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
     
-    for i in range(num_rows):
-        row = df_display.iloc[i]
+    # -------------------- CSS Styles --------------------
+    st.markdown(f"""
+        <style>
+        .winner-card {{
+            background-color: #1e2124; 
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+            height: 100%; 
+            border-left: 5px solid #4beaff; 
+        }}
+        .card-title {{
+            color: #4beaff; 
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }}
+        .card-prize {{
+            color: #ffeb3b; 
+            font-size: 1.2em;
+            font-weight: bold;
+        }}
+        .card-detail {{
+            color: #c9c9c9;
+            font-size: 1em;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # -------------------- Load Data --------------------
+    df_summary = pd.DataFrame() 
+    try:
+        if os.path.exists(HISTORY_FILE):
+             df_summary = pd.read_csv(HISTORY_FILE)
+             if not df_summary.empty:
+                df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
+    except Exception:
+        pass 
         
-        with cols[i % 2]:
+    # -------------------- Header and Body --------------------
+    st.title("🏆 หน้าสรุปผลรางวัลรวมทั้งหมด")
+    st.markdown("---")
+
+    # -------------------- Display Results --------------------
+    st.header("📋 รายชื่อผู้โชคดีทั้งหมด")
+    
+    if not df_summary.empty:
+        NUM_COLUMNS = 2
+        cols = st.columns(NUM_COLUMNS)
+        
+        for index, row in df_summary.iterrows():
+            col_index = index % NUM_COLUMNS 
+            group_name = row['กลุ่มจับรางวัล'] if 'กลุ่มจับรางวัล' in row else row['แผนก']
             
-            html_content = f"""
-            <div class="prize-card">
-                <div>
-                    <span class="prize-name">🎁 {row['รายการของขวัญ']}</span>
-                </div>
-                <div>
-                    <span class="winner-name">👤 ชื่อ: {row['ชื่อ-นามสกุล']}</span><br>
-                    <span class="group-info">🏢 แผนก: {row.get('แผนก', 'N/A')}</span><br>
-                    <span class="group-info">👥 กลุ่ม: {row['กลุ่มจับรางวัล']}</span>
-                </div>
+            card_html = f"""
+            <div class="winner-card">
+                <div class="card-title">🎁 ลำดับที่: {row['ลำดับที่']}</div>
+                <div class="card-prize">🏆 {row['รายการของขวัญ']}</div>
+                <div class="card-detail">👤 ชื่อ: **{row['ชื่อ-นามสกุล']}**</div>
+                <div class="card-detail">🏢 กลุ่ม: **{group_name}**</div>
             </div>
             """
-            st.markdown(html_content, unsafe_allow_html=True)
-    
-    st.markdown("---")
+            
+            with cols[col_index]:
+                st.markdown(card_html, unsafe_allow_html=True)
+
+        st.markdown("---")
+        
+        st.subheader("⬇️ ไฟล์รางวัลสำหรับการพิมพ์ (รูปแบบตาราง)")
+        excel_data = to_excel(df_summary)
+        
+        st.download_button(
+            label="💾 ดาวน์โหลดไฟล์ Excel",
+            data=excel_data,
+            file_name=f'Summary_Raffle_Draw_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            type="primary"
+        )
+        
+    else:
+        st.info("ยังไม่มีข้อมูลการสุ่มรางวัล")
+
+if __name__ == '__main__':
+    main()
