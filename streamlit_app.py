@@ -18,14 +18,12 @@ st.set_page_config(layout="wide", page_title="LWS Raffle Draw App")
 # --- FUNCTIONS ---
 # ----------------------------------------------------
 
-# @st.cache_data is removed to ensure data refreshes immediately after file edits.
 def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     """Load employee and prize data from CSV files."""
     
     # Load Employee Data
     if os.path.exists(emp_file):
         df_emp = pd.read_csv(emp_file)
-        # Ensure the 'กลุ่มจับรางวัล' column exists and is used for filtering later
         if 'กลุ่มจับรางวัล' not in df_emp.columns:
             st.error(f"ไฟล์ {emp_file} ต้องมีคอลัมน์ชื่อ 'กลุ่มจับรางวัล'")
             return None, None
@@ -42,7 +40,6 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     # Load Prize Data
     if os.path.exists(prize_file):
         df_prize = pd.read_csv(prize_file)
-        # Ensure required columns exist
         if 'ชื่อของขวัญ' not in df_prize.columns or 'จำนวนคงเหลือ' not in df_prize.columns or 'กลุ่มจับรางวัล' not in df_prize.columns:
             st.error(f"ไฟล์ {prize_file} ต้องมีคอลัมน์ 'ชื่อของขวัญ', 'จำนวนคงเหลือ', และ 'กลุ่มจับรางวัล'")
             return None, None
@@ -51,7 +48,7 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
         return None, None
     
     # Clean up and validate
-    df_emp['Drawn'] = False # Default status for all employees
+    df_emp['Drawn'] = False 
     
     return df_emp, df_prize
 
@@ -59,15 +56,12 @@ def load_history(history_file=HISTORY_FILE):
     """Load the history of drawn winners."""
     if os.path.exists(history_file):
         try:
-            # Read the history file, assume the correct headers are present
             df_history = pd.read_csv(history_file)
             return df_history
         except Exception as e:
             st.warning(f"ไม่สามารถโหลดประวัติการสุ่มได้: {e}")
-            # Create an empty DataFrame with required columns if loading fails
             return pd.DataFrame(columns=['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล'])
     else:
-        # Create an empty DataFrame with required columns if file doesn't exist
         return pd.DataFrame(columns=['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล'])
 
 def save_history(df_history, history_file=HISTORY_FILE):
@@ -87,13 +81,12 @@ if 'df_emp' not in st.session_state or 'df_prize' not in st.session_state:
         st.session_state['df_emp'] = df_emp_loaded
         st.session_state['df_prize'] = df_prize_loaded
     else:
-        st.stop() # Stop the app if data loading failed
+        st.stop() 
 
 if 'draw_history' not in st.session_state:
     st.session_state['draw_history'] = load_history()
 
 if 'remaining_prizes' not in st.session_state:
-    # Initialize remaining prizes based on loaded prize data
     st.session_state['remaining_prizes'] = st.session_state['df_prize'].set_index('ชื่อของขวัญ')['จำนวนคงเหลือ'].to_dict()
 
 # ----------------------------------------------------
@@ -134,7 +127,6 @@ def perform_draw(selected_group, selected_prize, num_winners):
             'ชื่อ-นามสกุล': row['ชื่อ-นามสกุล'],
             'แผนก': row['แผนก'],
             'รายการของขวัญ': selected_prize,
-            # *** สำคัญมาก: บันทึกกลุ่มจับรางวัลเพื่อใช้ในการกรองหน้า Summary ***
             'กลุ่มจับรางวัล': selected_group 
         })
     
@@ -142,7 +134,7 @@ def perform_draw(selected_group, selected_prize, num_winners):
     
     # 6. Append and Save History
     st.session_state['draw_history'] = pd.concat([st.session_state['draw_history'], new_winners_df], ignore_index=True)
-    save_history(st.session_state['draw_history']) # Save to file immediately
+    save_history(st.session_state['draw_history']) 
 
     # Display Results
     st.balloons()
@@ -166,7 +158,6 @@ def main_app():
     with st.sidebar:
         st.header("ข้อมูลคงเหลือ")
         
-        # Display remaining prizes
         for prize, count in st.session_state['remaining_prizes'].items():
             st.markdown(f"**{prize}**: {count} ชิ้น")
         
@@ -186,11 +177,13 @@ def main_app():
     
     col1, col2, col3 = st.columns(3)
     
+    # *** เริ่มส่วนที่แก้ไข: ใช้ Selectbox แทน Buttons ***
     with col1:
         selected_group = st.selectbox(
             "1. เลือกกลุ่มจับรางวัล",
             options=all_groups
         )
+    # *** สิ้นสุดส่วนที่แก้ไข ***
         
     # Filter available prizes for the selected group
     available_prizes_for_group = st.session_state['df_prize'][
@@ -217,14 +210,21 @@ def main_app():
     
     max_to_draw = min(max_winners, eligible_count)
     
+    # *** แก้ไขส่วนนี้เพื่อแก้ปัญหา StreamlitMixedNumericTypesError ***
     with col3:
+        # กำหนด min_value เป็น 0 หรือ 1 ขึ้นอยู่กับว่ามีของรางวัลให้สุ่มหรือไม่
+        input_min_value = 1 if max_to_draw > 0 else 0
+        # กำหนด value เริ่มต้นเป็น 1 หรือ 0
+        input_value = min(1, max_to_draw) if max_to_draw > 0 else 0
+
         num_winners = st.number_input(
             "3. จำนวนผู้โชคดีที่ต้องการสุ่ม",
-            min_value=1,
-            max_value=max_to_draw if max_to_draw > 0 else 1,
-            value=min(1, max_to_draw) if max_to_draw > 0 else 0,
+            min_value=input_min_value,
+            max_value=max_to_draw,
+            value=input_value,
             disabled=(max_to_draw == 0)
         )
+    # *** สิ้นสุดการแก้ไขแก้ Error ***
     
     st.markdown("---")
     
@@ -236,16 +236,14 @@ def main_app():
 
     if st.button("🔄 รีเซ็ตการสุ่มทั้งหมด (ยกเลิกข้อมูลผู้โชคดีทั้งหมด)"):
         if st.warning("คุณแน่ใจหรือไม่ว่าต้องการรีเซ็ตข้อมูลทั้งหมด? ข้อมูลผู้โชคดีจะถูกลบ!"):
-             # Reset Session State
              st.session_state.pop('df_emp')
              st.session_state.pop('draw_history')
              st.session_state.pop('remaining_prizes')
              
-             # Reset History File
              if os.path.exists(HISTORY_FILE):
                 os.remove(HISTORY_FILE)
              
-             st.rerun() # Rerun the app to reload fresh data
+             st.rerun() 
 
 if __name__ == '__main__':
     main_app()
