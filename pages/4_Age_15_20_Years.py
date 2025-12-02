@@ -61,7 +61,7 @@ def main():
         st.markdown("---") # เพิ่มเส้นคั่นใน sidebar
         
 
-    # -------------------- CSS Styles --------------------
+     # -------------------- CSS Styles --------------------
     st.markdown(f"""
         <style>
         .winner-card {{
@@ -73,15 +73,9 @@ def main():
             height: 100%; 
             border-left: 5px solid #ff9900; 
         }}
-        .card-title {{
-            color: #ff9900; 
-            font-size: 1.5em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
         .card-prize {{
             color: #ffeb3b; 
-            font-size: 1.2em;
+            font-size: 1.5em;
             font-weight: bold;
         }}
         .card-detail {{
@@ -123,8 +117,7 @@ def main():
             
             card_html = f"""
             <div class="winner-card">
-                <div class="card-title">🎁 ลำดับที่: {row['ลำดับที่']}</div>
-                <div class="card-prize">🏆 {row['รายการของขวัญ']}</div>
+                <div class="card-prize">🎁 {row['รายการของขวัญ']}</div>
                 <div class="card-detail">👤 ชื่อ: **{row['ชื่อ-นามสกุล']}**</div>
                 <div class="card-detail">🏢 กลุ่ม: **{group_name_display}**</div>
             </div>
@@ -138,4 +131,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
