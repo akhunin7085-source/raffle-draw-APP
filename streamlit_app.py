@@ -483,13 +483,13 @@ def main():
         col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
         
         with col_btn_center:
-            st.markdown(f"**💡 กลุ่มที่พร้อมสุ่ม:** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
+            st.markdown(f"💡 กลุ่มที่พร้อมสุ่ม : ** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
 
-            if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม: **{selected_group}**", key="main_draw_btn", use_container_width=True):
+            if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม : **{selected_group}**", key="main_draw_btn", use_container_width=True):
                 
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
-                ROLLING_DURATION = 0.5 
+                ROLLING_DURATION = 0.3 
                 ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 3.0)
                 
                 if draw_results:
@@ -510,7 +510,7 @@ def main():
                         
                         # A. Show rolling animation 
                         with current_winner_box.container():
-                            st.markdown(f"## กำลังสุ่มผู้โชคดีรายการที่ **{i+1}**...") 
+                            st.markdown(f"## กำลังสุ่มผู้โชคดี **{i+1}**...") 
                         time.sleep(ROLLING_DURATION) 
                         
                         # B. Announce Winner
@@ -584,6 +584,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
