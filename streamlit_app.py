@@ -31,7 +31,7 @@ def save_history(history_list):
     required_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล']
 
     if not history_list:
-        df_history = pd.DataFrame(columns=required_cols) 
+        df_history = pd.DataFrame(columns=required_cols)
     else:
         df_history = pd.DataFrame(history_list)
         for col in required_cols:
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
