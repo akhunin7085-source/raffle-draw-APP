@@ -34,9 +34,9 @@ def save_history(history_list):
         df_history = pd.DataFrame(columns=required_cols)
     else:
         df_history = pd.DataFrame(history_list)
-        for col in required_cols:
-             if col not in df_history.columns:
-                 df_history[col] = ''
+        for col in required_cols:
+            if col not in df_history.columns:
+                df_history[col] = ''
         
     try:
         # การเขียนไฟล์ draw_history.csv ยังคงต้องทำ แต่ไม่รับประกันความคงทน
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
