@@ -199,7 +199,7 @@ def main():
     
     with st.sidebar:
         st.header("⚙️ ตั้งค่าข้อมูล")
-        default_title = "🎉 สุ่มขวัญปีใหม่ 2568 🎁"
+        default_title = "🎉 สุ่มขวัญปีใหม่ 2569 🎁"
         custom_title = st.text_input("ชื่อ/หัวข้อโปรแกรม:", value=default_title)
         st.markdown("---")
         
@@ -616,6 +616,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
