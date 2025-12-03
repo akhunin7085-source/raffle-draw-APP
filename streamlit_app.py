@@ -438,10 +438,10 @@ def main():
         .success-box {{
             background-color: #1a5631;
             color: white;
-            padding: 200px;
+            padding: 20px;
             border-left: 24px solid #48a964;
             border-radius: 10px;
-            margin-bottom: 2.5rem;
+            margin-bottom: 5.5rem;
             font-size: 2.5em;
             font-weight: bold;
             text-align: center;
@@ -616,6 +616,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
