@@ -361,8 +361,8 @@ def main():
     # ----------------------------------------------------
     if st.session_state.emp_df.empty or st.session_state.prize_df.empty:
         st.error("ไม่สามารถเริ่มการสุ่มได้ เนื่องจากข้อมูลพนักงานหรือของขวัญไม่สมบูรณ์ (กรุณาอัปโหลดไฟล์ใหม่)")
-        return 
-
+        return
+        
     # กำหนดลำดับที่ต้องการ
     CUSTOM_GROUP_ORDER = [
         'อายุงานไม่ถึง 1 ปี',
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
