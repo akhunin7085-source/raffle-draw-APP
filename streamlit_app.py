@@ -428,48 +428,56 @@ def main():
             padding-right: 5rem;
         }}
         .main .block-container {{
-            max-width: 5000px;
+            max-width: 900px; /* ลดความกว้างหลักลงมาเพื่อให้ดูรวมศูนย์มากขึ้น */
             margin-left: auto;
             margin-right: auto;
             background-color: rgba(14, 17, 23, 0.9);
             border-radius: 10px;
-            padding: 20px;
+            padding: 30px; /* เพิ่ม padding ภายในกล่องหลัก */
         }}
         .success-box {{
             background-color: #1a5631;
             color: white;
-            padding: 20px;
-            border-left: 24px solid #48a964;
-            border-radius: 10px;
-            margin-bottom: 5.5rem;
+            padding: 15px;
+            border-left: 6px solid #48a964;
+            border-radius: 5px;
+            margin-bottom: 1rem;
             font-size: 2.5em;
             font-weight: bold;
             text-align: center;
+            box-shadow: 0 0 20px rgba(72, 169, 100, 0.5); /* เพิ่มเงาให้โดดเด่น */
         }}
+        /* *** ปรับปุ่มหลักให้เป็นก้อนใหญ่ตรงกลาง *** */
         .stButton>button[key="main_draw_btn"] {{
             background-color: #ff4b4b;
             color: white !important;
-            border-radius: 8px;
-            padding: 10px 20px;
-            font-size: 1.2em;
+            border-radius: 12px;
+            padding: 15px 30px; /* ขยายขนาดปุ่มหลัก */
+            font-size: 1.5em; /* ขยาย font ปุ๋มหลัก */
             font-weight: bold;
-            box-shadow: 0 4px 8px rgba(255, 75, 75, 0.4);
+            box-shadow: 0 6px 12px rgba(255, 75, 75, 0.6);
             transition: all 0.3s ease;
         }}
-        .stButton>button[key^="group_btn_"] {{
-            background-color: #3e4856 !important;
-            color: #4beaff !important;
-            border: 2px solid #4beaff;
-            border-radius: 20px;
-            padding: 8px 15px;
-            font-size: 1.1em;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-            transition: all 0.2s;
+        /* *** ปรับปุ่มกลุ่มให้ดูเป็นก้อนที่จัดกลางได้ง่ายขึ้น *** */
+        .group-button-container {{
+            display: flex;
+            justify-content: center; /* จัดให้อยู่ตรงกลางแนวนอน */
+            flex-wrap: wrap; /* ให้ปุ่มขึ้นบรรทัดใหม่ได้ */
+            gap: 10px; /* ระยะห่างระหว่างปุ่ม */
+            margin-top: 15px;
+            margin-bottom: 15px;
         }}
-        .stButton>button[key^="group_btn_"]:hover {{
-            background-color: #4beaff !important;
-            color: #0e1117 !important;
+        .group-button-container .stButton>button {{
+             background-color: #3e4856 !important;
+             color: #4beaff !important;
+             border: 2px solid #4beaff;
+             border-radius: 20px;
+             padding: 8px 15px;
+             font-size: 1.1em;
+             font-weight: bold;
+             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+             transition: all 0.2s;
+             min-width: 150px; /* กำหนดความกว้างขั้นต่ำ */
         }}
         h1 {{
             color: #4beaff;
@@ -478,6 +486,8 @@ def main():
         }}
         h2 {{
             text-align: center;
+            color: #ffffff;
+            font-weight: 300;
         }}
         </style>
         """, unsafe_allow_html=True)
@@ -616,3 +626,4 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
