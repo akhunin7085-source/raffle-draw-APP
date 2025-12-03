@@ -250,7 +250,7 @@ else:
         card_html = f"""
         <div class="prize-card">
             <div class="prize-header">
-                <span class="prize-rank">ลำดับที่ {rank_value}</span>
+                <span class="prize-rank">➡️ ลำดับที่ {rank_value}</span>
                 <span class="prize-name">🎁 {row['รายการของขวัญ']}</span>
             </div>
             <div>
