@@ -380,7 +380,7 @@ def main():
     groups = [g for g in CUSTOM_GROUP_ORDER if g in groups_clean]
     # เพิ่มกลุ่มอื่นๆ ที่อาจไม่ได้อยู่ในรายการสั่งเรียงไว้ที่ท้ายสุด (เพื่อความสมบูรณ์)
     groups.extend([g for g in groups_clean if g not in CUSTOM_GROUP_ORDER])
-    # ----------------------------------------------------
+    # ----------------------------------------------------
     
     # ----------------------------------------------------
     # 3. CSS และ UI Main Body
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
