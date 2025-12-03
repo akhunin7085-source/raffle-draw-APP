@@ -428,7 +428,7 @@ def main():
             padding-right: 5rem;
         }}
         .main .block-container {{
-            max-width: 1000px;
+            max-width: 1500px;
             margin-left: auto;
             margin-right: auto;
             background-color: rgba(14, 17, 23, 0.9);
@@ -441,7 +441,7 @@ def main():
             padding: 10px;
             border-left: 24px solid #48a964;
             border-radius: 10px;
-            margin-bottom: 1rem;
+            margin-bottom: 2.5rem;
             font-size: 2.5em;
             font-weight: bold;
             text-align: center;
@@ -616,6 +616,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
