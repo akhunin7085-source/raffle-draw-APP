@@ -549,8 +549,8 @@ def main():
                         with current_winner_box.container():
                             winner_message = f"""
                             <div class='success-box'>
-                                <span style='font-size: 1.0em; font-weight: normal;'>🎊 ผู้โชคดีคือ 🎊</span><br>
-                                <span style='font-size: 0.8em; color: #ffeb3b;'> {winner_name} </span><br>
+                                <span style='font-size: 0.7em; font-weight: normal;'>🎊 ผู้โชคดีคือ 🎊</span><br>
+                                <span style='font-size: 1.1em; color: #ffeb3b;'> {winner_name} </span><br>
                                 <span style='font-size: 1.0em; color: #ffffff;'> ได้รับ: {prize} </span>
                             </div>
                             """
@@ -616,6 +616,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
