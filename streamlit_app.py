@@ -46,11 +46,11 @@ def save_history(history_list):
 
 @st.cache_data(show_spinner=False)
 def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
-    """โหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์ (ใช้เฉพาะตอนเริ่มต้นแอปเท่านั้น)"""
-    employee_data = pd.DataFrame() 
-    prize_data = pd.DataFrame() 
+    """โหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์ (ใช้เฉพาะตอนเริ่มต้นแอปเท่านั้น)"""
+    employee_data = pd.DataFrame()
+    prize_data = pd.DataFrame()
     
-    st.info("กำลังโหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์...")
+    st.info("กำลังโหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์...")
     
     # 1. โหลดไฟล์พนักงาน
     if os.path.exists(emp_file):
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
