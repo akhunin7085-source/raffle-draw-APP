@@ -428,7 +428,7 @@ def main():
             padding-right: 5rem;
         }}
         .main .block-container {{
-            max-width: 2000px;
+            max-width: 1000px;
             margin-left: auto;
             margin-right: auto;
             background-color: rgba(14, 17, 23, 0.9);
@@ -438,7 +438,7 @@ def main():
         .success-box {{
             background-color: #1a5631;
             color: white;
-            padding: 15px;
+            padding: 25px;
             border-left: 6px solid #48a964;
             border-radius: 5px;
             margin-bottom: 1rem;
@@ -616,5 +616,6 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
