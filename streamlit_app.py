@@ -84,7 +84,7 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
 
     try:
         prize_data['จำนวนคงเหลือ'] = pd.to_numeric(
-            prize_data['จำนวนคงเหลือ'],
+            prize_data['จำนวนคงเหลือ'],
             errors='coerce'
         ).fillna(0).astype(int)
     except:
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
