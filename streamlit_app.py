@@ -364,7 +364,7 @@ def main():
         return
         
     # กำหนดลำดับที่ต้องการ
-    CUSTOM_GROUP_ORDER = [
+        CUSTOM_GROUP_ORDER = [
         'อายุงานไม่ถึง 1 ปี',
         'อายุงาน 1-5 ปี',
         'อายุงาน 5-10 ปี',
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
