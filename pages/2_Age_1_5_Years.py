@@ -182,7 +182,7 @@ def main():
             card_html = f"""
             <div class="winner-card">
                 <div class="prize-header">
-                    <span class="card-rank">ลำดับที่ {row['ลำดับที่']}</span>
+                    <span class="card-rank">➡️ ลำดับที่ {row['ลำดับที่']}</span>
                     <span class="card-prize">🎁 {row['รายการของขวัญ']}</span>
                 </div>
                 <div class="card-name">👤 {row['ชื่อ-นามสกุล']}</div>
@@ -199,3 +199,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
