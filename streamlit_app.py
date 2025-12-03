@@ -52,22 +52,22 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     
     st.info("กำลังโหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์...")
     
-    # 1. โหลดไฟล์พนักงาน
-    if os.path.exists(emp_file):
-        try:
-            employee_data = pd.read_csv(emp_file, encoding='utf-8-sig') # ใช้ utf-8-sig แก้ปัญหา BOM
-        except Exception as e:
-            st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {emp_file} ได้: {e}")
-    
-    # 2. โหลดไฟล์ของขวัญ
-    if os.path.exists(prize_file):
-        try:
-            prize_data = pd.read_csv(prize_file, encoding='utf-8-sig') 
-        except Exception as e:
-            st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {prize_file} ได้: {e}")
+    # 1. โหลดไฟล์พนักงาน
+    if os.path.exists(emp_file):
+        try:
+            employee_data = pd.read_csv(emp_file, encoding='utf-8-sig') # ใช้ utf-8-sig แก้ปัญหา BOM
+        except Exception as e:
+            st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {emp_file} ได้: {e}")
+            
+    # 2. โหลดไฟล์ของขวัญ
+    if os.path.exists(prize_file):
+        try:
+            prize_data = pd.read_csv(prize_file, encoding='utf-8-sig')
+        except Exception as e:
+            st.error(f"ERROR: ไม่สามารถอ่านไฟล์ {prize_file} ได้: {e}")
     
 
-    # 3. ตรวจสอบความสมบูรณ์ของข้อมูลและคอลัมน์ที่จำเป็น
+    # 3. ตรวจสอบความสมบูรณ์ของข้อมูลและคอลัมน์ที่จำเป็น
     if employee_data.empty or prize_data.empty:
         return pd.DataFrame(), pd.DataFrame()
         
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
