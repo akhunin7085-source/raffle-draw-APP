@@ -357,16 +357,30 @@ def main():
 
 
     # ----------------------------------------------------
-    # 2. เตรียมข้อมูลกลุ่ม
-    # ----------------------------------------------------
-    if st.session_state.emp_df.empty or st.session_state.prize_df.empty:
-        st.error("ไม่สามารถเริ่มการสุ่มได้ เนื่องจากข้อมูลพนักงานหรือของขวัญไม่สมบูรณ์ (กรุณาอัปโหลดไฟล์ใหม่)")
-        return 
+    # 2. เตรียมข้อมูลกลุ่ม
+    # ----------------------------------------------------
+    if st.session_state.emp_df.empty or st.session_state.prize_df.empty:
+        st.error("ไม่สามารถเริ่มการสุ่มได้ เนื่องจากข้อมูลพนักงานหรือของขวัญไม่สมบูรณ์ (กรุณาอัปโหลดไฟล์ใหม่)")
+        return 
 
-    
-    groups = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
-    groups = [str(g).strip() for g in groups if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
-    groups = sorted(list(set(groups))) 
+    # กำหนดลำดับที่ต้องการ
+    CUSTOM_GROUP_ORDER = [
+        'อายุงานไม่ถึง 1 ปี',
+        'อายุงาน 1-5 ปี',
+        'อายุงาน 5-10 ปี',
+        'อายุงาน 10-15 ปี',
+        'อายุงาน 15-20 ปี',
+        'อายุงาน 20 ปีขึ้นไป'
+    ]
+
+    groups_from_df = st.session_state.emp_df['กลุ่มจับรางวัล'].unique().tolist()
+    groups_clean = [str(g).strip() for g in groups_from_df if pd.notna(g) and str(g).strip().lower() != "nan" and str(g).strip() != ""]
+
+    # จัดเรียงกลุ่มตามลำดับที่กำหนด โดยกรองเฉพาะกลุ่มที่มีอยู่ในไฟล์ข้อมูล
+    groups = [g for g in CUSTOM_GROUP_ORDER if g in groups_clean]
+    # เพิ่มกลุ่มอื่นๆ ที่อาจไม่ได้อยู่ในรายการสั่งเรียงไว้ที่ท้ายสุด (เพื่อความสมบูรณ์)
+    groups.extend([g for g in groups_clean if g not in CUSTOM_GROUP_ORDER])
+    # ----------------------------------------------------
     
     # ----------------------------------------------------
     # 3. CSS และ UI Main Body
@@ -584,3 +598,4 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
