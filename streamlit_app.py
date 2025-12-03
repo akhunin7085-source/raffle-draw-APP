@@ -40,11 +40,11 @@ def save_history(history_list):
  
     try:
     # การเขียนไฟล์ draw_history.csv ยังคงต้องทำ แต่ไม่รับประกันความคงทน
-        df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig') 
+        df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig')
     except Exception as e:
-        print(f"ERROR: ไม่สามารถบันทึกประวัติผลสุ่มลงในไฟล์ได้: {e}") 
+        print(f"ERROR: ไม่สามารถบันทึกประวัติผลสุ่มลงในไฟล์ได้: {e}")
 
-@st.cache_data(show_spinner=False) 
+@st.cache_data(show_spinner=False)
 def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     """โหลดข้อมูลเริ่มต้นจากไฟล์ CSV บนดิสก์ (ใช้เฉพาะตอนเริ่มต้นแอปเท่านั้น)"""
     employee_data = pd.DataFrame() 
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
