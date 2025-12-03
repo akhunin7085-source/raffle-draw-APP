@@ -70,7 +70,7 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
     # 3. ตรวจสอบความสมบูรณ์ของข้อมูลและคอลัมน์ที่จำเป็น
     if employee_data.empty or prize_data.empty:
         return pd.DataFrame(), pd.DataFrame()
-        
+        
     required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
     required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ']
 
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
