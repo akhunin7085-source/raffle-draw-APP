@@ -68,19 +68,19 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
             
 
     # 3. ตรวจสอบความสมบูรณ์ของข้อมูลและคอลัมน์ที่จำเป็น
-    if employee_data.empty or prize_data.empty:
-        return pd.DataFrame(), pd.DataFrame()
+    if employee_data.empty or prize_data.empty:
+        return pd.DataFrame(), pd.DataFrame()
         
-    required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
-    required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ'] 
-    
-    if not all(col in employee_data.columns for col in required_emp_cols):
-        st.error(f"ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
-        return pd.DataFrame(), pd.DataFrame()
-        
-    if not all(col in prize_data.columns for col in required_prize_cols):
-        st.error(f"ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
-        return pd.DataFrame(), pd.DataFrame()
+    required_emp_cols = ['ชื่อ-นามสกุล', 'แผนก', 'กลุ่มจับรางวัล']
+    required_prize_cols = ['ชื่อของขวัญ', 'กลุ่มจับรางวัล', 'จำนวนคงเหลือ']
+
+    if not all(col in employee_data.columns for col in required_emp_cols):
+        st.error(f"ไฟล์พนักงานขาดคอลัมน์ที่จำเป็น: {', '.join(required_emp_cols)}")
+        return pd.DataFrame(), pd.DataFrame()
+        
+    if not all(col in prize_data.columns for col in required_prize_cols):
+        st.error(f"ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
+        return pd.DataFrame(), pd.DataFrame()
 
     try:
         prize_data['จำนวนคงเหลือ'] = pd.to_numeric(
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
