@@ -525,7 +525,7 @@ def main():
         col_dummy_left, col_btn_center, col_dummy_right = st.columns([1, 1, 1])
         
         with col_btn_center:
-            st.markdown(f"💡 กลุ่มที่พร้อมสุ่ม : ** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
+            st.markdown(f"<p style='text-align:center;'>💡 กลุ่มที่พร้อมสุ่ม : ** <span style='color:#4beaff; font-weight:bold;'>{selected_group}</span>", unsafe_allow_html=True)
 
             if st.button(f"🔴 เริ่มสุ่มรางวัลกลุ่ม : **{selected_group}**", key="main_draw_btn", use_container_width=True):
                 
@@ -626,4 +626,5 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
