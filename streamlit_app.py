@@ -440,7 +440,7 @@ def main():
             color: white;
             padding: 50px;
             border-left: 6px solid #48a964;
-            border-radius: 5px;
+            border-radius: 20px;
             margin-bottom: 1rem;
             font-size: 2.5em;
             font-weight: bold;
@@ -616,6 +616,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
