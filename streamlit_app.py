@@ -37,7 +37,7 @@ def save_history(history_list):
         for col in required_cols:
             if col not in df_history.columns:
                 df_history[col] = ''
-        
+ 
     try:
         # การเขียนไฟล์ draw_history.csv ยังคงต้องทำ แต่ไม่รับประกันความคงทน
         df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig') 
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
