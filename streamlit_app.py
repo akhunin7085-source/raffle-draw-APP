@@ -174,7 +174,7 @@ def main():
     
     st.set_page_config(
         layout="wide",
-        page_title="สุ่มจับรางวัลปีใหม่ 2568",
+        page_title="สุ่มจับรางวัลปีใหม่ 2569",
         initial_sidebar_state="collapsed"
     )
     
@@ -428,7 +428,7 @@ def main():
             padding-right: 5rem;
         }}
         .main .block-container {{
-            max-width: 1000px;
+            max-width: 1300px;
             margin-left: auto;
             margin-right: auto;
             background-color: rgba(14, 17, 23, 0.9);
@@ -616,3 +616,4 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
