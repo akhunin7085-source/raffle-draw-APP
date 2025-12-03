@@ -20,7 +20,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv'
 EMPLOYEE_FILE = 'employees.csv' # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
-PRIZE_FILE = 'prizes.csv' # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
+PRIZE_FILE = 'prizes.csv' # ไฟล์เริ่มต้น (สำหรับกรณีไม่มีการอัปโหลด)
 
 # ----------------------------------------------------
 # --- FUNCTIONS ---
@@ -598,3 +598,4 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
