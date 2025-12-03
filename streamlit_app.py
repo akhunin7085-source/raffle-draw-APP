@@ -82,11 +82,11 @@ def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
         st.error(f"ไฟล์ของขวัญขาดคอลัมน์ที่จำเป็น: {', '.join(required_prize_cols)}")
         return pd.DataFrame(), pd.DataFrame()
 
-    try:
-        prize_data['จำนวนคงเหลือ'] = pd.to_numeric(
-            prize_data['จำนวนคงเหลือ'], 
-            errors='coerce'
-        ).fillna(0).astype(int)
+    try:
+        prize_data['จำนวนคงเหลือ'] = pd.to_numeric(
+            prize_data['จำนวนคงเหลือ'],
+            errors='coerce'
+        ).fillna(0).astype(int)
     except:
         st.error("คอลัมน์ 'จำนวนคงเหลือ' ใน prizes.csv ต้องเป็นตัวเลข")
         return pd.DataFrame(), pd.DataFrame()
@@ -598,6 +598,7 @@ if __name__ == '__main__':
              st.session_state.draw_history = []
 
     main()
+
 
 
 
