@@ -531,7 +531,7 @@ def main():
                 
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
-                ROLLING_DURATION = 0.3
+                ROLLING_DURATION = 0.03
                 ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 3.0)
                 
                 if draw_results:
@@ -626,6 +626,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
