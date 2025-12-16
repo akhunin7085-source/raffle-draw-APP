@@ -531,8 +531,8 @@ def main():
                 
                 draw_results = run_draw(selected_group, st.session_state.emp_df, st.session_state.prize_df)
                 
-                ROLLING_DURATION = 0.03
-                ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 3.0)
+                ROLLING_DURATION = 0.01
+                ANNOUNCEMENT_DURATION = st.session_state.get('announcement_speed', 0.01)
                 
                 if draw_results:
                     st.subheader(f"เริ่มการสุ่มกลุ่ม **{selected_group}**")
@@ -626,6 +626,7 @@ if __name__ == '__main__':
             st.session_state.draw_history = []
 
     main()
+
 
 
 
