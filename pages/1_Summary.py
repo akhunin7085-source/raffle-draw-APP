@@ -125,14 +125,14 @@ st.markdown("""
 }
 
 .winner-name {
-    font-size: 0.9em; 
+    font-size: 1.0em; 
     font-weight: bold;
     color: #4beaff; 
     margin-top: 5px;
 }
 
 .group-info {
-    font-size: 0.9em;
+    font-size: 1.0em;
     color: #cccccc;
     margin-top: 5px;
 }
