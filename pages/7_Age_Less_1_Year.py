@@ -64,7 +64,7 @@ def main():
             min-height: 150px;
         }
         .card-prize { color: #ffeb3b; font-size: 1.3em; font-weight: bold; margin-bottom: 10px; display: block; }
-        .card-name { color: #4beaff; font-size: 1.6em; font-weight: bold; }
+        .card-name { color: #4beaff; font-size: 1.7em; font-weight: bold; }
         .card-detail { color: #c9c9c9; font-size: 1.1em; margin-top: 5px; }
         .card-rank-corner {
             position: absolute;
@@ -114,6 +114,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
