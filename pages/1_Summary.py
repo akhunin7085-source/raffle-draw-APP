@@ -113,19 +113,19 @@ st.markdown("""
 
 /* ปรับขนาดชื่อรางวัลให้เล็กลงที่นี่ (เดิม 1.8em) */
 .prize-name {
-    font-size: 1.2em; 
+    font-size: 1.4em; 
     font-weight: bold;
     color: #ffd700; 
 }
 
 .prize-rank {
-    font-size: 1.1em; 
+    font-size: 1.4em; 
     font-weight: bold;
     color: #ff4b4b; 
 }
 
 .winner-name {
-    font-size: 1.1em; 
+    font-size: 1.2em; 
     font-weight: bold;
     color: #4beaff; 
     margin-top: 5px;
