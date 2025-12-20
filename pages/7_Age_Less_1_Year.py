@@ -99,44 +99,49 @@ def main():
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
             height: 100%; 
             border-left: 5px solid #ff9900; 
+            position: relative; /* สำคัญ: เพื่อให้ลำดับที่อ้างอิงตำแหน่งการ์ดได้ */
         }
         
         .prize-header {
             display: flex;
-            justify-content: space-between; 
+            justify-content: flex-start; /* ชิดซ้ายเพื่อให้รางวัลเด่น */
             align-items: center;
             margin-bottom: 10px;
             border-bottom: 1px solid #333333;
             padding-bottom: 5px;
         }
 
-        /* ปรับขนาดชื่อรางวัลให้เล็กลง (เดิม 1.8em) */
         .card-prize {
             color: #ffeb3b; 
             font-size: 1.4em; 
             font-weight: bold;
         }
-        
-        /* ปรับขนาดลำดับที่ให้ดูสมส่วน */
-        .card-rank {
-            font-size: 1.4em;
+
+        /* สร้าง Class ใหม่สำหรับลำดับที่มุมขวาล่าง */
+        .card-rank-corner {
+            position: absolute; /* กำหนดตำแหน่งอิสระ */
+            right: 15px;        /* ห่างจากขอบขวา 15px */
+            bottom: 10px;       /* ห่างจากขอบล่าง 10px */
+            font-size: 1.1em;
             font-weight: bold;
-            color: #ff4b4b; 
+            color: #ff4b4b;
+            background: rgba(0,0,0,0.3); /* ใส่พื้นหลังจางๆ ให้ตัวเลขชัดขึ้น */
+            padding: 2px 8px;
+            border-radius: 5px;
         }
 
         .card-name {
             color: #4beaff; 
-            font-size: 1.2em;
+            font-size: 1.3em;
             font-weight: bold;
             margin-top: 5px;
         }
 
         .card-detail {
             color: #c9c9c9;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
         </style>
-        """, unsafe_allow_html=True)
     
     # -------------------- Load, Merge, Filter and Sort Data (NEW) --------------------
     df_summary = pd.DataFrame() 
@@ -184,12 +189,13 @@ def main():
             card_html = f"""
             <div class="winner-card">
                 <div class="prize-header">
-                    <span class="card-rank">➡️ ลำดับที่ {row['ลำดับที่']}</span>
                     <span class="card-prize">🎁 {row['รายการของขวัญ']}</span>
                 </div>
                 <div class="card-name">👤 {row['ชื่อ-นามสกุล']}</div>
                 <div class="card-detail">🏢 กลุ่ม: {group_name_display}</div>
                 {f'<div class="card-detail">🏢 แผนก: {row["แผนก"]}</div>' if 'แผนก' in row else ''}
+                
+                <div class="card-rank-corner">ลำดับที่ {row['ลำดับที่']}</div>
             </div>
             """
             
@@ -201,6 +207,7 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
 
