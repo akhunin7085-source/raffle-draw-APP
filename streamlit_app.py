@@ -2,225 +2,188 @@ import streamlit as st
 import pandas as pd
 import random
 import time
-import io
-import os
 import base64
-import qrcode
+import os
 import warnings
 
-# ป้องกัน UserWarning จาก openpyxl
+# ป้องกัน UserWarning
 warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
-
-# ----------------------------------------------------
-# --- CONFIGURATION & FILE PATHS ---
-# ----------------------------------------------------
-HISTORY_FILE = 'draw_history.csv'
-EMPLOYEE_FILE = 'employees.csv'
-PRIZE_FILE = 'prizes.csv'
 
 # ----------------------------------------------------
 # --- FUNCTIONS ---
 # ----------------------------------------------------
-
 def save_history(history_list):
-    required_cols = ['ชื่อ-นามสกุล', 'แผนก', 'รายการของขวัญ', 'กลุ่มจับรางวัล']
-    if not history_list:
-        df_history = pd.DataFrame(columns=required_cols)
-    else:
-        df_history = pd.DataFrame(history_list)
-    try:
-        df_history.to_csv(HISTORY_FILE, index=False, encoding='utf_8_sig')
-    except Exception as e:
-        print(f"ERROR: {e}")
+    df = pd.DataFrame(history_list)
+    df.to_csv('draw_history.csv', index=False, encoding='utf_8_sig')
 
-def load_data(emp_file=EMPLOYEE_FILE, prize_file=PRIZE_FILE):
-    employee_data = pd.DataFrame()
-    prize_data = pd.DataFrame()
-    
-    if os.path.exists(emp_file):
-        for enc in ['utf-8-sig', 'cp874', 'utf-8']:
-            try:
-                employee_data = pd.read_csv(emp_file, encoding=enc)
-                break
-            except: continue
-    
-    if os.path.exists(prize_file):
-        for enc in ['utf-8-sig', 'cp874', 'utf-8']:
-            try:
-                prize_data = pd.read_csv(prize_file, encoding=enc)
-                break
-            except: continue
+def load_data():
+    emp_df = pd.DataFrame()
+    prize_df = pd.DataFrame()
+    if os.path.exists('employees.csv'):
+        emp_df = pd.read_csv('employees.csv', encoding='utf-8-sig')
+    if os.path.exists('prizes.csv'):
+        prize_df = pd.read_csv('prizes.csv', encoding='utf-8-sig')
+    if not emp_df.empty and 'สถานะ' not in emp_df.columns:
+        emp_df['สถานะ'] = 'พร้อมสุ่ม'
+    if not prize_df.empty:
+        prize_df['จำนวนคงเหลือ'] = pd.to_numeric(prize_df['จำนวนคงเหลือ'], errors='coerce').fillna(0).astype(int)
+    return emp_df, prize_df
 
-    if not employee_data.empty and 'สถานะ' not in employee_data.columns:
-        employee_data['สถานะ'] = 'พร้อมสุ่ม'
-    
-    if not prize_data.empty:
-        prize_data['จำนวนคงเหลือ'] = pd.to_numeric(prize_data['จำนวนคงเหลือ'], errors='coerce').fillna(0).astype(int)
-        
-    return employee_data, prize_data
-
-def to_csv_bytes(df):
-    return df.to_csv(index=False, encoding='utf_8_sig').encode('utf-8')
-
-def run_draw(group, emp_df, prize_df):
-    group_clean = str(group).strip()
-    available_employees = emp_df[(emp_df['กลุ่มจับรางวัล'] == group_clean) & (emp_df['สถานะ'] == 'พร้อมสุ่ม')]
-    available_prizes = prize_df[(prize_df['กลุ่มจับรางวัล'] == group_clean) & (prize_df['จำนวนคงเหลือ'] > 0)]
-    
-    prize_list = []
-    for _, row in available_prizes.iterrows():
-        prize_list.extend([row['ชื่อของขวัญ']] * row['จำนวนคงเหลือ'])
-        
-    max_draws = min(len(available_employees), len(prize_list))
-    if max_draws == 0: return []
-        
-    selected_employees = available_employees[['ชื่อ-นามสกุล', 'แผนก']].sample(max_draws).values.tolist()
-    selected_prizes = random.sample(prize_list, max_draws)
-    return list(zip(selected_employees, selected_prizes))
-
-def get_base64_image(image_file):
-    try:
-        with open(image_file, "rb") as f:
-            data = base64.b64encode(f.read()).decode("utf-8")
-        return f"data:image/jpg;base64,{data}"
-    except: return None
+def get_image_base64(uploaded_file):
+    if uploaded_file is not None:
+        return base64.b64encode(uploaded_file.getvalue()).decode()
+    return None
 
 # ----------------------------------------------------
-# --- Main Program ---
+# --- MAIN PROGRAM ---
 # ----------------------------------------------------
 def main():
-    st.set_page_config(layout="wide", page_title="สุ่มจับรางวัลปีใหม่ 2569")
+    st.set_page_config(layout="wide", page_title="ระบบสุ่มรางวัล")
 
-    # Initial State
     if 'emp_df' not in st.session_state:
         st.session_state.emp_df, st.session_state.prize_df = load_data()
+    if 'draw_history' not in st.session_state:
         st.session_state.draw_history = []
-        if os.path.exists(HISTORY_FILE):
-            try: st.session_state.draw_history = pd.read_csv(HISTORY_FILE).to_dict('records')
-            except: pass
 
-    # --- SIDEBAR (Settings) ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.header("⚙️ ตั้งค่า")
         custom_title = st.text_input("หัวข้อโปรแกรม:", "🎉 สุ่มขวัญปีใหม่ 2569 🎁")
-        
-        st.markdown("### ⏱️ ความเร็วการสุ่ม")
-        speed_control = st.slider(
-            "ระยะเวลาแสดงผล (วินาที)",
-            min_value=0.01, 
-            max_value=2.0, 
-            value=0.03, # ตั้งค่าเริ่มต้นเป็น 0.03 ตามความต้องการ
-            step=0.01,
-            key='announcement_speed'
-        )
-        
-        if st.button("🔴 ล้างประวัติการสุ่ม", use_container_width=True):
-            if os.path.exists(HISTORY_FILE): os.remove(HISTORY_FILE)
-            st.cache_data.clear()
-            st.rerun()
+        bg_upload = st.file_uploader("เปลี่ยนภาพพื้นหลัง:", type=['jpg', 'png'])
+        bg_base64 = get_image_base64(bg_upload)
+        draw_speed = st.slider("ความเร็ว (วินาที):", 0.01, 1.0, 0.03, 0.01)
 
-    # --- CSS STYLES (ปรับปรุง Success Box ให้กว้างขึ้น) ---
-    bg_img = get_base64_image('background.jpg')
-    bg_css = f"background-image: url('{bg_img}'); background-size: cover;" if bg_img else "background-color: #0e1117;"
-    
+    # --- CSS: บังคับทุกอย่างให้อยู่ตรงกลาง (FIXED) ---
+    bg_style = f'background-image: url("data:image/png;base64,{bg_base64}"); background-size: cover;' if bg_base64 else "background-color: #0e1117;"
+
     st.markdown(f"""
         <style>
-        .stApp {{ {bg_css} }}
+        .stApp {{ {bg_style} }}
+        
+        /* จัด Container หลักให้อยู่กึ่งกลางหน้าจอเสมอ */
         .main .block-container {{
-            max-width: 1200px;
-            background-color: rgba(14, 17, 23, 0.85);
-            border-radius: 15px;
-            margin: auto;
-            padding: 40px;
+            max-width: 1000px !important;
+            margin: auto !important;
+            padding-top: 2rem !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important; /* จัดลูกๆ ให้อยู่กลางแนวนอน */
+            justify-content: center !important; /* จัดลูกๆ ให้อยู่กลางแนวตั้ง */
         }}
+
+        /* หัวข้อต้องอยู่ตรงกลาง */
+        .main-title {{
+            text-align: center !important;
+            color: #4beaff;
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.5);
+            margin-bottom: 20px;
+            width: 100%;
+        }}
+
+        /* กล่องประกาศรางวัล (Success Box) แบบอยู่กึ่งกลางเป๊ะ */
         .success-box {{
             background-color: #1a5631;
             color: white;
-            padding: 40px 20px;
-            border-left: 10px solid #48a964;
-            border-radius: 15px;
-            margin: 20px auto;
-            width: 100%;
+            padding: 50px 20px;
+            border-left: 15px solid #48a964;
+            border-radius: 20px;
             text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto !important; /* บังคับ Margin Auto */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
         }}
-        .winner-label {{ font-size: 2.0em; font-weight: normal; display: block; }}
-        .winner-name-text {{ font-size: 4.0em; color: #ffeb3b; font-weight: bold; display: block; margin: 10px 0; }}
-        .prize-text {{ font-size: 2.5em; color: #ffffff; display: block; }}
+        .w-name {{ font-size: 5rem; color: #ffeb3b; font-weight: bold; display: block; margin: 15px 0; }}
+        .p-name {{ font-size: 2.5rem; color: #ffffff; display: block; }}
         
-        .stButton>button[key="main_draw_btn"] {{
+        /* ปรับปุ่มสุ่ม */
+        div.stButton > button {{
+            margin: 0 auto;
+            display: block;
             background-color: #ff4b4b !important;
-            font-size: 1.5em !important;
-            padding: 15px 30px !important;
-            border-radius: 12px !important;
+            height: 70px;
+            width: 300px;
+            font-size: 1.5rem !important;
+        }}
+        
+        /* จัดการกลุ่มปุ่มให้เรียงกลาง */
+        [data-testid="stHorizontalBlock"] {{
+            justify-content: center !important;
         }}
         </style>
         """, unsafe_allow_html=True)
 
-    st.title(custom_title)
-    st.markdown("---")
+    # --- UI CONTENT ---
+    # ใช้ Markdown แทน st.title เพื่อควบคุมการจัดกลางได้ 100%
+    st.markdown(f'<div class="main-title">{custom_title}</div>', unsafe_allow_html=True)
 
-    # --- Group Selection ---
+    # เลือกกลุ่ม (จัดวางตรงกลาง)
     if not st.session_state.emp_df.empty:
         groups = [g for g in st.session_state.emp_df['กลุ่มจับรางวัล'].unique() if pd.notna(g)]
+        st.markdown("<p style='text-align:center;'>🎯 เลือกกลุ่มจับรางวัล</p>", unsafe_allow_html=True)
+        
+        # สร้างปุ่มกลุ่ม
         cols = st.columns(len(groups))
         for i, group in enumerate(groups):
             with cols[i]:
-                if st.button(group, key=f"btn_{group}", use_container_width=True):
+                if st.button(group, key=f"g_{group}"):
                     st.session_state.selected_group = group
-    
+
     st.markdown("---")
 
-    # --- Drawing Logic ---
-    if st.session_state.get('selected_group'):
+    # ส่วนการสุ่ม
+    if 'selected_group' in st.session_state:
         group = st.session_state.selected_group
+        st.markdown(f"<h3 style='text-align:center;'>พร้อมสุ่มกลุ่ม: <span style='color:#4beaff'>{group}</span></h3>", unsafe_allow_html=True)
         
-        # จัดวางปุ่มสุ่มตรงกลาง
-        _, col_draw, _ = st.columns([1, 1.2, 1])
-        with col_draw:
-            st.markdown(f"<p style='text-align:center;'>พร้อมสุ่มกลุ่ม: <b>{group}</b></p>", unsafe_allow_html=True)
-            draw_click = st.button(f"🔴 เริ่มสุ่ม {group}", key="main_draw_btn", use_container_width=True)
-
-        # กล่องแสดงผล (อยู่นอกคอลัมน์เพื่อให้ขยายกว้างเต็มหน้าจอ)
-        display_area = st.empty()
-
-        if draw_click:
-            results = run_draw(group, st.session_state.emp_df, st.session_state.prize_df)
-            if results:
+        if st.button(f"🔴 เริ่มสุ่มรางวัล", key="draw_btn"):
+            emp_list = st.session_state.emp_df[(st.session_state.emp_df['กลุ่มจับรางวัล'] == group) & (st.session_state.emp_df['สถานะ'] == 'พร้อมสุ่ม')]
+            prize_list_df = st.session_state.prize_df[(st.session_state.prize_df['กลุ่มจับรางวัล'] == group) & (st.session_state.prize_df['จำนวนคงเหลือ'] > 0)]
+            
+            prizes = []
+            for _, r in prize_list_df.iterrows():
+                prizes.extend([r['ชื่อของขวัญ']] * r['จำนวนคงเหลือ'])
+            
+            if not emp_list.empty and prizes:
+                count = min(len(emp_list), len(prizes))
+                winners = emp_list.sample(count)
+                selected_prizes = random.sample(prizes, count)
+                
+                placeholder = st.empty()
                 st.balloons()
-                for i, item in enumerate(results):
-                    (w_name, w_dept), prize = item
+
+                for i in range(count):
+                    w_name = winners.iloc[i]['ชื่อ-นามสกุล']
+                    w_dept = winners.iloc[i]['แผนก']
+                    p_name = selected_prizes[i]
                     
-                    # แสดงผลผู้โชคดี (กล่องกว้างตามที่แก้ไข)
-                    with display_area.container():
+                    with placeholder.container():
                         st.markdown(f"""
-                        <div class='success-box'>
-                            <span class='winner-label'>🎊 ผู้โชคดีคนที่ {i+1} 🎊</span>
-                            <span class='winner-name-text'>{w_name}</span>
-                            <span class='prize-text'>ของรางวัล: {prize}</span>
-                        </div>
+                            <div class="success-box">
+                                <span style="font-size:2rem;">🎊 ขอแสดงความยินดีกับ 🎊</span>
+                                <span class="w-name">{w_name}</span>
+                                <span class="p-name">ได้รับรางวัล: {p_name}</span>
+                                <p style="margin-top:10px; opacity:0.8;">({w_dept})</p>
+                            </div>
                         """, unsafe_allow_html=True)
                     
-                    # Update States
-                    idx_emp = st.session_state.emp_df.index[st.session_state.emp_df['ชื่อ-นามสกุล'] == w_name].tolist()
-                    if idx_emp: st.session_state.emp_df.at[idx_emp[0], 'สถานะ'] = 'ได้รับแล้ว'
+                    # Update & Save
+                    st.session_state.emp_df.loc[st.session_state.emp_df['ชื่อ-นามสกุล'] == w_name, 'สถานะ'] = 'ได้รับแล้ว'
+                    p_idx = st.session_state.prize_df.index[(st.session_state.prize_df['ชื่อของขวัญ'] == p_name) & (st.session_state.prize_df['กลุ่มจับรางวัล'] == group)][0]
+                    st.session_state.prize_df.at[p_idx, 'จำนวนคงเหลือ'] -= 1
                     
-                    idx_prz = st.session_state.prize_df.index[(st.session_state.prize_df['ชื่อของขวัญ'] == prize) & (st.session_state.prize_df['กลุ่มจับรางวัล'] == group)].tolist()
-                    if idx_prz: st.session_state.prize_df.at[idx_prz[0], 'จำนวนคงเหลือ'] -= 1
-                    
-                    st.session_state.draw_history.append({'ชื่อ-นามสกุล': w_name, 'แผนก': w_dept, 'รายการของขวัญ': prize, 'กลุ่มจับรางวัล': group})
+                    st.session_state.draw_history.append({'ชื่อ-นามสกุล': w_name, 'แผนก': w_dept, 'รายการของขวัญ': p_name, 'กลุ่มจับรางวัล': group})
                     save_history(st.session_state.draw_history)
                     
-                    # หน่วงเวลาตามที่เลือก (0.03 วินาที)
-                    time.sleep(speed_control)
+                    time.sleep(draw_speed) # 0.03 วินาที
                 
-                display_area.empty()
-                st.success(f"🎉 เสร็จสิ้นการสุ่มกลุ่ม {group}")
+                st.success("สุ่มรางวัลครบถ้วน!")
             else:
-                st.error("ไม่มีพนักงานหรือของรางวัลเหลือในกลุ่มนี้")
+                st.warning("ไม่มีผู้มีสิทธิ์หรือของรางวัลเหลือในกลุ่มนี้")
     else:
-        st.info("กรุณาเลือกกลุ่มด้านบน")
+        st.markdown("<p style='text-align:center;'>โปรดเลือกกลุ่มจับรางวัลด้านบน</p>", unsafe_allow_html=True)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
