@@ -15,15 +15,14 @@ GROUP_NAME = "อายุงาน 1-5 ปี"
 # --- CONFIGURATION ---
 # ----------------------------------------------------
 HISTORY_FILE = 'draw_history.csv' 
-EMPLOYEE_FILE = 'employees.csv' # NEW: เพิ่มไฟล์พนักงาน
-APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" # URL ของ Streamlit App ของคุณ
+EMPLOYEE_FILE = 'employees.csv' 
+APP_BASE_URL = "https://lws-draw-app-final.streamlit.app" 
 
 
 # ----------------------------------------------------
 # --- FUNCTIONS ---
 # ----------------------------------------------------
 def generate_qr_code(url):
-    """Generate base64 encoded QR Code image from URL."""
     qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=10, border=4)
     qr.add_data(url)
     qr.make(fit=True)
@@ -34,7 +33,6 @@ def generate_qr_code(url):
     return f"data:image/png;base64,{img_str}"
 
 def load_data(file_path):
-    """ฟังก์ชันโหลดข้อมูลด้วยการลอง Encoding หลายตัว"""
     if os.path.exists(file_path):
         encodings = ['utf-8-sig', 'utf-8', 'cp874', 'latin1']
         df = None
@@ -49,11 +47,9 @@ def load_data(file_path):
 
 @st.cache_data(show_spinner=False)
 def load_employees_for_merge():
-    """โหลดไฟล์พนักงานต้นฉบับและสร้างคอลัมน์ลำดับเดิม"""
     df = load_data(EMPLOYEE_FILE)
     if df is not None and 'ชื่อ-นามสกุล' in df.columns:
         df['ชื่อ-นามสกุล'] = df['ชื่อ-นามสกุล'].astype(str).str.strip()
-        # สร้างคอลัมน์ลำดับเดิม (Index คือลำดับบรรทัด)
         df['_original_order'] = df.index
         return df[['ชื่อ-นามสกุล', '_original_order']]
     return pd.DataFrame()
@@ -66,8 +62,6 @@ def main():
     
     st.set_page_config(layout="wide", page_title=f"ผลรางวัล: {GROUP_NAME}") 
     
-    # ... (ส่วน QR Code และ Sidebar เหมือนเดิม) ...
-    # -------------------- โค้ดสร้าง URL Path --------------------
     try:
         page_name_full = os.path.basename(__file__).replace('.py', '') 
         page_name_parts = page_name_full.split('_', 1)
@@ -81,14 +75,13 @@ def main():
     
     group_url = f"{APP_BASE_URL}/{page_name}"
     
-    # -------------------- Sidebar: QR Code --------------------
     with st.sidebar:
         st.header(f"🎟️ QR Code สำหรับกลุ่ม: {GROUP_NAME}")
         st.image(generate_qr_code(group_url), caption=f"สแกนเพื่อดูผลรางวัล: {GROUP_NAME}", use_column_width="always")
         st.markdown(f"**ลิงก์:** `{group_url}`")
         st.markdown("---") 
 
-   # -------------------- CSS Styles (เหมือนเดิม) --------------------
+    # -------------------- CSS Styles (ปรับลดขนาดชื่อรางวัลลง) --------------------
     st.markdown("""
         <style>
         .winner-card {
@@ -110,14 +103,16 @@ def main():
             padding-bottom: 5px;
         }
 
+        /* ปรับขนาดชื่อรางวัลให้เล็กลง (เดิม 1.8em) */
         .card-prize {
             color: #ffeb3b; 
-            font-size: 1.8em; 
+            font-size: 1.2em; 
             font-weight: bold;
         }
         
+        /* ปรับขนาดลำดับที่ให้ดูสมส่วน */
         .card-rank {
-            font-size: 1.5em;
+            font-size: 1.1em;
             font-weight: bold;
             color: #ff4b4b; 
         }
@@ -131,20 +126,18 @@ def main():
 
         .card-detail {
             color: #c9c9c9;
-            font-size: 1em;
+            font-size: 0.9em;
         }
         </style>
         """, unsafe_allow_html=True)
     
-    # -------------------- Load, Merge, Filter and Sort Data (NEW) --------------------
+    # -------------------- Load, Merge, Filter and Sort Data --------------------
     df_summary = pd.DataFrame() 
     
-    # 1. โหลดข้อมูลทั้งหมด
     df_history = load_data(HISTORY_FILE)
-    df_employees = load_employees_for_merge() # โหลดพนักงานพร้อม '_original_order'
+    df_employees = load_employees_for_merge()
 
     if df_history is not None and not df_employees.empty:
-        # 2. Merge ข้อมูลประวัติกับลำดับพนักงาน
         df_merged = pd.merge(
             df_history, 
             df_employees, 
@@ -153,14 +146,10 @@ def main():
         )
         
         if 'กลุ่มจับรางวัล' in df_merged.columns:
-            # 3. กรองตาม GROUP_NAME ที่กำหนดไว้
             df_filtered = df_merged[df_merged['กลุ่มจับรางวัล'].astype(str).str.strip() == GROUP_NAME].copy()
             
             if not df_filtered.empty:
-                # 4. จัดเรียงตามลำดับเดิมของพนักงาน
                 df_summary = df_filtered.sort_values(by='_original_order', na_position='last').reset_index(drop=True)
-                
-                # 5. สร้างลำดับที่ (1, 2, 3...) หลังจากจัดเรียงแล้ว
                 df_summary.insert(0, 'ลำดับที่', range(1, 1 + len(df_summary)))
 
 
@@ -168,7 +157,6 @@ def main():
     st.title(f"🎉 ผลรางวัลเฉพาะกลุ่ม: {GROUP_NAME}")
     st.markdown("---")
 
-    # -------------------- Display Results --------------------
     st.header(f"📋 รายชื่อผู้โชคดีกลุ่ม {GROUP_NAME}")
     
     if not df_summary.empty:
@@ -182,7 +170,7 @@ def main():
             card_html = f"""
             <div class="winner-card">
                 <div class="prize-header">
-                    <span class="card-rank">➡️ ลำดับที่ {row['ลำดับที่']}</span>
+                    <span class="card-rank">ลำดับที่ {row['ลำดับที่']}</span>
                     <span class="card-prize">🎁 {row['รายการของขวัญ']}</span>
                 </div>
                 <div class="card-name">👤 {row['ชื่อ-นามสกุล']}</div>
@@ -195,8 +183,7 @@ def main():
                 st.markdown(card_html, unsafe_allow_html=True)
         
     else:
-        st.info(f"ยังไม่มีข้อมูลการสุ่มรางวัลสำหรับกลุ่ม **{GROUP_NAME}** หรือไม่สามารถโหลดไฟล์ได้")
+        st.info(f"ยังไม่มีข้อมูลการสุ่มรางวัลสำหรับกลุ่ม **{GROUP_NAME}**")
 
 if __name__ == '__main__':
     main()
-
