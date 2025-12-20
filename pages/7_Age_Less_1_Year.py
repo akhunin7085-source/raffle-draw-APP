@@ -126,7 +126,7 @@ def main():
 
         .card-name {
             color: #4beaff; 
-            font-size: 1.5em;
+            font-size: 1.2em;
             font-weight: bold;
             margin-top: 5px;
         }
@@ -201,4 +201,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
