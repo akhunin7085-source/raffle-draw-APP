@@ -88,7 +88,7 @@ def main():
         st.markdown(f"**ลิงก์:** `{group_url}`")
         st.markdown("---") 
 
-   # -------------------- CSS Styles (เหมือนเดิม) --------------------
+     # -------------------- CSS Styles (ปรับลดขนาดชื่อรางวัลลง) --------------------
     st.markdown("""
         <style>
         .winner-card {
@@ -110,14 +110,16 @@ def main():
             padding-bottom: 5px;
         }
 
+        /* ปรับขนาดชื่อรางวัลให้เล็กลง (เดิม 1.8em) */
         .card-prize {
             color: #ffeb3b; 
-            font-size: 1.8em; 
+            font-size: 1.2em; 
             font-weight: bold;
         }
         
+        /* ปรับขนาดลำดับที่ให้ดูสมส่วน */
         .card-rank {
-            font-size: 1.5em;
+            font-size: 1.1em;
             font-weight: bold;
             color: #ff4b4b; 
         }
@@ -131,7 +133,7 @@ def main():
 
         .card-detail {
             color: #c9c9c9;
-            font-size: 1em;
+            font-size: 0.9em;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -199,3 +201,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
