@@ -125,7 +125,7 @@ st.markdown("""
 }
 
 .winner-name {
-    font-size: 1.5em; 
+    font-size: 0.9em; 
     font-weight: bold;
     color: #4beaff; 
     margin-top: 5px;
