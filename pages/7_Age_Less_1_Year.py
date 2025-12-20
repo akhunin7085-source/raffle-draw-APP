@@ -63,14 +63,14 @@ def main():
             position: relative;
             min-height: 150px;
         }
-        .card-prize { color: #ffeb3b; font-size: 1.0em; font-weight: bold; margin-bottom: 10px; display: block; }
-        .card-name { color: #4beaff; font-size: 0.9em; font-weight: bold; }
-        .card-detail { color: #c9c9c9; font-size: 0.9em; margin-top: 5px; }
+        .card-prize { color: #ffeb3b; font-size: 1.2em; font-weight: bold; margin-bottom: 10px; display: block; }
+        .card-name { color: #4beaff; font-size: 1.1em; font-weight: bold; }
+        .card-detail { color: #c9c9c9; font-size: 1.1em; margin-top: 5px; }
         .card-rank-corner {
             position: absolute;
             right: 15px;
             bottom: 10px;
-            font-size: 1.0em;
+            font-size: 0.9em;
             color: #ff4b4b;
             font-weight: bold;
             background: rgba(255,255,255,0.1);
@@ -114,6 +114,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
