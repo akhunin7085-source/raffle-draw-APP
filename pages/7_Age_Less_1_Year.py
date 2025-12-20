@@ -70,7 +70,7 @@ def main():
             position: absolute;
             right: 15px;
             bottom: 10px;
-            font-size: 1.1em;
+            font-size: 1.0em;
             color: #ff4b4b;
             font-weight: bold;
             background: rgba(255,255,255,0.1);
@@ -114,6 +114,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
