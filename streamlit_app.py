@@ -99,11 +99,22 @@ def main():
             try: st.session_state.draw_history = pd.read_csv(HISTORY_FILE).to_dict('records')
             except: pass
 
-    # --- SIDEBAR (Settings) ---
+   # --- SIDEBAR (Settings) ---
     with st.sidebar:
         st.header("⚙️ ตั้งค่า")
         custom_title = st.text_input("หัวข้อโปรแกรม:", "🎉 สุ่มขวัญปีใหม่ 2569 🎁")
         
+        # --- 1. เพิ่มปุ่มเลือกไฟล์พื้นหลัง ---
+        st.markdown("### 🖼️ พื้นหลัง")
+        bg_upload = st.file_uploader("เปลี่ยนรูปพื้นหลัง (jpg/png)", type=['jpg', 'jpeg', 'png'])
+        if bg_upload:
+            # บันทึกไฟล์ที่อัปโหลดทับ background.jpg
+            with open("background.jpg", "wb") as f:
+                f.write(bg_upload.getbuffer())
+            st.success("เปลี่ยนรูปสำเร็จ! (กำลังรีเฟรช...)")
+            time.sleep(1)
+            st.rerun()
+
         st.markdown("### ⏱️ ความเร็วการสุ่ม")
         speed_control = st.slider(
             "ระยะเวลาแสดงผล (วินาที)",
@@ -114,9 +125,38 @@ def main():
             key='announcement_speed'
         )
         
-        if st.button("🔴 ล้างประวัติการสุ่ม", use_container_width=True):
-            if os.path.exists(HISTORY_FILE): os.remove(HISTORY_FILE)
+        st.markdown("---")
+        
+        # --- 2. ปุ่มสำรองข้อมูล (Backup) ---
+        if not st.session_state.emp_df.empty:
+            st.markdown("### 💾 การจัดการข้อมูล")
+            # สร้างไฟล์ Excel สำหรับ Backup ใน Memory
+            df_hist_backup = pd.DataFrame(st.session_state.draw_history)
+            if not df_hist_backup.empty:
+                towrite = io.BytesIO()
+                df_hist_backup.to_excel(towrite, index=False, engine='xlsxwriter')
+                towrite.seek(0)
+                st.download_button(
+                    label="📥 สำรองข้อมูลประวัติ (Excel)",
+                    data=towrite,
+                    file_name=f"backup_history_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                    mime="application/vnd.ms-excel",
+                    use_container_width=True
+                )
+
+        # --- 3. แก้ไขปุ่มล้างประวัติให้ใช้งานได้จริง ---
+        if st.button("🔴 ล้างประวัติการสุ่มทั้งหมด", use_container_width=True):
+            if os.path.exists(HISTORY_FILE): 
+                os.remove(HISTORY_FILE)
+            
+            # Reset ข้อมูลใน Session
+            st.session_state.draw_history = []
+            # โหลดข้อมูลพนักงานและของรางวัลใหม่จากไฟล์ตั้งต้น
+            st.session_state.emp_df, st.session_state.prize_df = load_data()
+            
             st.cache_data.clear()
+            st.success("ล้างข้อมูลเรียบร้อยแล้ว")
+            time.sleep(1)
             st.rerun()
 
     # --- CSS STYLES ---
@@ -242,3 +282,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
