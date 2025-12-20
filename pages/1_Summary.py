@@ -200,7 +200,8 @@ else:
         card_html = f"""
         <div class="prize-card">
             <div class="prize-header">
-                <span class="prize-rank">ลำดับที่ {int(rank_value) if rank_value != '-' else '-'}</span>
+                # เปลี่ยนจากของเดิม เป็นโค้ดที่รองรับทศนิยมและค่าว่าง
+                <span class="prize-rank">ลำดับที่ {int(float(rank_value)) if str(rank_value).strip() not in ['-', '', 'nan'] else '-'}</span>
                 <span class="prize-name">🎁 {row['รายการของขวัญ']}</span>
             </div>
             <div>
