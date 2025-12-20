@@ -113,20 +113,20 @@ def main():
         /* ปรับขนาดชื่อรางวัลให้เล็กลง (เดิม 1.8em) */
         .card-prize {
             color: #ffeb3b; 
-            font-size: 1.2em; 
+            font-size: 1.4em; 
             font-weight: bold;
         }
         
         /* ปรับขนาดลำดับที่ให้ดูสมส่วน */
         .card-rank {
-            font-size: 1.1em;
+            font-size: 1.4em;
             font-weight: bold;
             color: #ff4b4b; 
         }
 
         .card-name {
             color: #4beaff; 
-            font-size: 1.5em;
+            font-size: 1.2em;
             font-weight: bold;
             margin-top: 5px;
         }
@@ -201,4 +201,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
